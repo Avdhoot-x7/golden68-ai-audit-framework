@@ -380,9 +380,9 @@ If you use this framework in your research, please cite:
 ```bibtex
 @software{golden68_framework,
   title={Golden 68: AI Compliance \& Audit Framework},
-  author={Your Name},
+  author={Avadhut Chakradeo},
   year={2026},
-  url={https://github.com/yourusername/golden68_framework}
+  url={https://github.com/Avdhoot-x7/golden68-ai-audit-framework}
 }
 ```
 
