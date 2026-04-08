@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from src.evaluation.loader import DatasetLoader
 from src.evaluation.scorer import Golden68Scorer, AgreementDeltaCalculator
 from src.evaluation.comparison import MultiModelComparison, StatisticalAnalyzer, ErrorAnalyzer, BenchmarkExporter
-from src.models.adapters import ModelAdapterFactory, ResilientModelClient, APIKeyExhaustedError, AutoRecoveryModelClient
+from src.models.adapters import ModelAdapterFactory, ResilientModelClient, APIKeyExhaustedError, ModelNotFoundError, AutoRecoveryModelClient, NVIDIAAdapter
 from src.evaluation.cost_tracker import APICostTracker, SmartResume
 from src.judges.llm_judge import LLMJudge
 from src.audit.human_audit import HumanAuditManager, HumanAuditRecord
@@ -160,6 +160,34 @@ def init_session_state():
     if "selected_prompts" not in st.session_state:
         st.session_state.selected_prompts = []
 
+def fuzzy_search_models(query: str, models: list, limit: int = 20) -> list:
+    """Search models using fuzzy matching."""
+    if not query:
+        return models[:limit]
+    
+    query_lower = query.lower()
+    scored = []
+    
+    for model in models:
+        model_lower = model.lower()
+        if model_lower == query_lower:
+            scored.append((100, model))
+        elif model_lower.startswith(query_lower):
+            scored.append((90, model))
+        elif query_lower in model_lower:
+            scored.append((70, model))
+        elif all(part in model_lower for part in query_lower.split()):
+            scored.append((50, model))
+    
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [model for _, model in scored[:limit]]
+
+
+def get_all_nvidia_models() -> list:
+    """Get all available NVIDIA NGC models."""
+    return NVIDIAAdapter.VALID_MODELS
+
+
 
 def get_provider_models(provider: str) -> dict:
     """Get available models for a provider."""
@@ -168,7 +196,18 @@ def get_provider_models(provider: str) -> dict:
         "openai": ["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"],
         "openrouter": ["openai/gpt-4", "openai/gpt-4o", "anthropic/claude-3-opus", "google/gemini-pro"],
         "anthropic": ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
-        "nvidia": ["openai/gpt-oss-120b", "meta/llama-3.1-405b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"]
+        "nvidia": [
+            "mistralai/mixtral-8x7b-instruct-v0.1",
+            "mistralai/mixtral-8x22b-instruct-v0.1",
+            "google/gemma-2-9b-it",
+            "google/gemma-2-27b-it",
+            "meta/llama-3.1-8b-instruct",
+            "meta/llama-3.1-70b-instruct",
+            "nvidia/llama-3.1-nemotron-70b-instruct",
+            "snowflake/arctic",
+            "deepseek-ai/deepseek-r1",
+            "deepseek-ai/deepseek-r1-qwen-32b",
+        ]
     }
     return {"models": models.get(provider, [])}
 
@@ -315,7 +354,7 @@ def render_setup_page():
         st.text_input(
             "Model Display Name (optional)",
             key=WIDGET_KEYS["test_custom_name"],
-            value="GPT-OSS-120B (NVIDIA)",
+            value="Mixtral-8x7B (NVIDIA NGC)",
             help="Give this model a friendly name for the report"
         )
         
@@ -327,13 +366,55 @@ def render_setup_page():
             index=4  # Default to nvidia
         )
         
-        # Test model
-        st.text_input(
-            "Model Name",
-            key=WIDGET_KEYS["test_model"],
-            value=DEFAULT_TEST_MODEL,
-            help="Enter the exact model name (e.g., gpt-4o, claude-3-opus)"
-        )
+        # Test model - Use searchable dropdown for NVIDIA, text input for others
+        provider = st.session_state.get(WIDGET_KEYS["test_provider"], "nvidia")
+        
+        if provider == "nvidia":
+            # Initialize search query if not exists
+            if "nvidia_model_search" not in st.session_state:
+                st.session_state.nvidia_model_search = "mixtral"
+            
+            # Search input
+            search_query = st.text_input(
+                "Search NVIDIA Model",
+                value=st.session_state.nvidia_model_search,
+                key="nvidia_search_input",
+                help="Search for NVIDIA NGC models"
+            )
+            
+            if search_query != st.session_state.nvidia_model_search:
+                st.session_state.nvidia_model_search = search_query
+            
+            # Get filtered models
+            all_nvidia_models = get_all_nvidia_models()
+            filtered_models = fuzzy_search_models(search_query, all_nvidia_models, limit=30)
+            
+            # Create selectable list
+            st.markdown("**Available Models (click to select):**")
+            
+            # Display in columns
+            cols = st.columns(2)
+            for i, model in enumerate(filtered_models[:20]):
+                with cols[i % 2]:
+                    if st.button(f"?? {model}", key=f"nvidia_model_btn_{i}", use_container_width=True):
+                        st.session_state[WIDGET_KEYS["test_model"]] = model
+                        st.rerun()
+            
+            # Show selected model
+            current_model = st.session_state.get(WIDGET_KEYS["test_model"], DEFAULT_TEST_MODEL)
+            st.text_input(
+                "Selected Model Name",
+                value=current_model,
+                key=WIDGET_KEYS["test_model"],
+                help="The model selected above or enter custom name"
+            )
+        else:
+            st.text_input(
+                "Model Name",
+                key=WIDGET_KEYS["test_model"],
+                value=DEFAULT_TEST_MODEL,
+                help="Enter the exact model name"
+            )
         
         # Test API key
         st.text_input(
