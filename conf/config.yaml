@@ -1,0 +1,46 @@
+# Golden 68 - AI Compliance & Audit Framework Configuration
+
+# API Settings
+gemini_api_key: ""  # Set via UI or environment
+
+# Model Settings
+models:
+  judge:
+    provider: "gemini"
+    model: "gemini-2.0-flash"
+    temperature: 0.3
+  test:
+    default: "gemini-2.0-flash"
+    available:
+      - "gemini-2.0-flash"
+      - "openai/gpt-4"
+      - "openai/gpt-4o"
+      - "anthropic/claude-3-opus"
+
+# Dataset Settings
+dataset:
+  total_prompts: 68
+  pillars:
+    - Causality
+    - Compliance
+    - Consistency
+  levels: [1, 2, 3, 4, 5]
+
+# Scoring Settings
+scoring:
+  judge_scale: 10
+  human_scale: 10
+  agreement_thresholds:
+    excellent: 0.8
+    good: 0.6
+    fair: 0.4
+
+# Output Settings
+output:
+  results_dir: "data/results"
+  reports_dir: "data/reports"
+
+# UI Settings
+ui:
+  title: "Golden 68 - AI Compliance & Audit Framework"
+  theme: "light"
