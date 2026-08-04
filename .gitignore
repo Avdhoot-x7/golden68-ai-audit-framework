@@ -62,3 +62,11 @@ secrets.json
 # OS
 Thumbs.db
 Desktop.ini
+data/chroma_db/
+data/embedding_model/
+data/fine_tuning/
+data/reports/
+data/results/
+data/dataset/L_*
+data/dataset/OJ_*
+trail test/

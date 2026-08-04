@@ -2,95 +2,86 @@
 
 ![Golden 68 AI Audit Framework](https://img.shields.io/badge/Status-Active-success) ![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue) ![License](https://img.shields.io/badge/License-MIT-purple)
 
-The **Golden 68 AI Audit Framework** is a cutting-edge, explainable AI (XAI) evaluation platform designed to rigorously audit Large Language Models (LLMs) against predefined safety, causality, and regulatory compliance standards. 
+Welcome to the **Golden 68 AI Audit Framework**! 
 
-Built with an **LLM-as-a-Judge** architecture and augmented by human-in-the-loop verification, it provides an enterprise-grade pipeline for ensuring models adhere to strict operational guidelines, including alignment with the **EU AI Act**.
+This project is an easy-to-use but powerful tool designed to test and audit Large Language Models (LLMs). As AI models get smarter, we need to make sure they are safe, reliable, and follow legal rules. This framework acts as a strict "examiner" to test how well AI models behave when asked tricky, sensitive, or complex questions.
 
 ---
 
-## ✨ Key Features
+## 🌟 What is this project?
+When companies build AI chatbots, they need to know if the bot will accidentally give dangerous advice, break laws, or make logical mistakes. 
 
-*   ⚖️ **LLM-as-a-Judge Pipeline:** Automate the evaluation of model responses using a highly structured judge prompt that grades based on Accuracy, Completeness, Reasoning Quality, and Compliance.
-*   🧠 **Multi-Provider Support:** Seamlessly connect to leading API providers, including **NVIDIA NGC**, **OpenAI**, **Anthropic**, and **OpenRouter**, utilizing a robust adapter pattern.
-*   🇪🇺 **EU AI Act Ready:** Architecture prepared for Retrieval-Augmented Generation (RAG) to dynamically inject regulatory context directly into the evaluation rubric.
-*   📊 **Statistical Reliability (Cohen's Kappa):** Validate the LLM Judge's determinations against human expert audits using rigorous statistical agreement metrics (Cohen's Kappa) to ensure scoring consistency.
-*   🗄️ **Persistent Vector Storage:** Powered by **ChromaDB**, securely storing historical evaluations, maintaining dataset hashes, and enabling semantic search across evaluation history.
-*   📑 **Advanced Reporting:** Automatically generate comprehensive **PDF Audit Reports** detailing model vulnerabilities, compliance heatmaps, and aggregate scores.
-*   🛠️ **Fine-Tuning Export:** Extract failed interactions into perfectly formatted **JSONL datasets** for continuous model alignment and fine-tuning.
+Our framework solves this problem by using an **LLM-as-a-Judge** approach. Instead of humans reading thousands of AI responses to check for safety, we use a highly intelligent "Judge AI" (like Gemini or Claude) to automatically grade the responses of the "Test AI" (like Llama-3 or DeepSeek). We then use a statistical math formula called **Cohen's Kappa** to prove that our Judge AI grades just as accurately as a human expert would.
+
+### How this helps others:
+* **For Researchers:** It provides a scientifically proven, statistical way to measure AI safety.
+* **For Companies:** It helps them quickly test their AI models against legal frameworks (like the EU AI Act) before releasing them to the public.
+* **For Developers:** It automatically saves any failed responses into a special file format (`JSONL`) so developers can easily retrain and fix their models!
+
+---
+
+## 📂 Our Datasets
+
+This framework relies on two very important datasets to test the AI models:
+
+### 1. The "Golden 68" Prompt Dataset
+This is our core testing dataset. It contains 68 highly specific, carefully crafted test prompts. These prompts are divided into specific "pillars" (categories) and "levels" of difficulty.
+* **Safety Prompts:** Testing if the AI refuses to give harmful instructions (e.g., "How do I build a weapon?").
+* **Causality Prompts:** Testing if the AI understands cause and effect logically.
+* **Consistency Prompts:** Testing if the AI gives the same logical answer when asked the same question in a different way.
+* Each prompt in the dataset includes the **Expected Behavior** (exactly what the AI *should* do), so the Judge knows how to grade it.
+
+### 2. The EU AI Act (RAG Indexed Dataset)
+To ensure the AI models comply with real-world laws, we have integrated the **European Union AI Act (2026)** into the system. 
+Instead of forcing the Judge AI to read the entire massive law book every time it grades a response, we use a smart database (ChromaDB). This database instantly searches for only the specific legal articles relevant to the current question, and feeds just that small snippet to the Judge. This makes the grading highly legally accurate and saves a massive amount of computing power!
+
+---
+
+## ⚙️ How the Testing Flow Works
+
+Here is the step-by-step journey of how an AI is tested in our framework:
+
+1. **Load the Prompt:** The system picks a tricky question from the Golden 68 dataset.
+2. **Test the Model:** The system sends the question to the AI we are testing (using API connections like NVIDIA, OpenAI, or Anthropic).
+3. **The AI Answers:** The tested AI generates its response.
+4. **Retrieve Laws (RAG):** The system searches the ChromaDB database for any relevant EU AI Act laws related to the topic.
+5. **The Judge Evaluates:** The framework sends the original question, the expected safe behavior, the relevant EU laws, and the AI's answer to the "Judge LLM".
+6. **Scoring:** The Judge gives a score from 1 to 10, determines a PASS/FAIL, and writes a detailed explanation of *why* it gave that score.
+7. **Human Verification:** A human can review the Judge's score in the user interface. The system calculates the **Cohen's Kappa** score to prove the AI Judge is reliable.
+
+---
+
+## 📑 Results and Reporting
+
+Once the test is finished, the framework automatically generates detailed results:
+
+* **PDF Audit Reports:** A beautiful, easy-to-read PDF document is created. It shows a visual "heatmap" of how well the AI performed across different safety pillars. It acts as an official "Safety Certificate" or "Audit Report" for the model.
+* **JSONL Fine-Tuning Export:** If the tested AI fails any questions, the system grabs those failures and perfectly formats them into a `.jsonl` file. Developers can plug this file directly into fine-tuning software to retrain the AI and fix its bad behavior!
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-*   Python 3.10 or higher
-*   API Keys for the models you wish to test (e.g., NVIDIA, OpenAI)
+If you want to run this audit framework on your own machine:
 
-### Installation
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Avdhoot-x7/golden68-ai-audit-framework.git
+   cd golden68-ai-audit-framework
+   ```
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/Avdhoot-x7/golden68-ai-audit-framework.git
-    cd golden68-ai-audit-framework
-    ```
+2. **Install the required packages:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3.  **Run the application:**
-    ```bash
-    streamlit run app.py
-    ```
-
----
-
-## 🖥️ System Architecture
-
-1.  **Dataset Ingestion:** Securely loads the `golden68.json` dataset, applying safe-parsing to handle incomplete or malformed entries gracefully.
-2.  **Model Execution:** The target model (e.g., Llama-3, DeepSeek) generates responses to the dataset prompts via secure `ModelAdapters`.
-3.  **Judge Evaluation:** The Judge LLM (e.g., Gemini, Claude) evaluates the target model's response against the expected behavior.
-4.  **Human Audit:** Human experts review the Judge's scores via the Streamlit UI, providing ground-truth validation.
-5.  **Statistical Validation:** The framework calculates **Cohen's Kappa** to determine the reliability between the AI Judge and the Human Auditor.
-6.  **Reporting & Persistence:** Results are logged to ChromaDB, and actionable PDF/JSONL reports are generated.
-
----
-
-## 📁 Project Structure
-
-```text
-golden68_framework/
-├── app.py                      # Main Streamlit Application Entry Point
-├── requirements.txt            # Python Dependencies
-├── data/                       # Local Storage
-│   ├── dataset/                # Golden68 dataset files (JSON/CSV)
-│   ├── chroma_db/              # Persistent Vector Store
-│   ├── reports/                # Generated PDF and JSON reports
-│   └── fine_tuning/            # Exported JSONL datasets for alignment
-└── src/                        # Core Application Logic
-    ├── database/               # ChromaDB Vector Store Implementation
-    ├── evaluation/             # Core Scoring Logic & Dataset Loaders
-    ├── judges/                 # LLM-as-a-Judge Prompting and Logic
-    ├── models/                 # API Adapters (NVIDIA, Anthropic, etc.)
-    ├── reporting/              # PDF Generation and JSONL Exporters
-    └── validation/             # Statistical metrics (Cohen's Kappa)
-```
-
----
-
-## 📝 Configuration
-
-Configure your API keys directly within the Streamlit UI under the **"API Configuration"** tab. The framework utilizes aggressive error handling to manage rate limits, API exhaustion, and safety filter blocks natively.
+3. **Start the application:**
+   ```bash
+   streamlit run app.py
+   ```
+4. Put in your API keys in the interface, and start auditing!
 
 ---
 
 ## 🤝 Contributing
-
-Contributions are welcome! If you are interested in improving the evaluation rubrics, adding new API adapters, or enhancing the statistical validation metrics, please open an issue or submit a pull request.
-
----
-
-## 📜 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+We welcome contributions! If you have ideas for new tricky prompts for the Golden 68 dataset, or ways to improve the Judge's accuracy, please feel free to open a Pull Request.
