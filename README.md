@@ -17,7 +17,7 @@
 
 While major research labs push toward "Glass Box" interpretability (e.g., Sparse Autoencoders), the industry faces an immediate regulatory challenge (such as the EU AI Act): there is a critical need for external auditing tools capable of verifying a model’s safety *without* needing access to its proprietary weights.
 
-The **Golden 68 AI Audit Framework** is a Post-Hoc Verification Framework. We have built a "Black Box Auditor" (a Python library and UX) that treats the LLM as a closed system and rigorously tests it against a novel **15-Property XAI Framework**.
+The **Golden 68 AI Audit Framework** is a Post-Hoc Verification Framework. We have built a "Black Box Auditor" (a Python library and UX) that treats the LLM as a closed system and rigorously tests it against a novel **XAI Evaluation Framework**.
 
 ---
 
@@ -30,20 +30,45 @@ Current Explainable AI (XAI) methods face three distinct challenges in the GenAI
 
 ---
 
-## 🧬 Core Innovation: The 15-Property Matrix
+## 🧬 Core Innovation: The 15 Properties of XAI
 
-While the framework evaluates 12 standard properties (Correctness, Consistency, Coherence, etc.), its primary research contribution is the formal definition and operationalization of **three novel properties** tailored for modern agentic systems:
+We have identified and noted 15 main properties for evaluating the quality of explanations in modern Explainable AI (XAI). These properties are traditionally divided into content, presentation, and user dimensions [1]:
 
-### 1. Causality (The "Why")
+1. **Correctness & Faithfulness**
+2. **Completeness**
+3. **Consistency & Stability**
+4. **Continuity**
+5. **Contrastivity**
+6. **Covariate Complexity**
+7. **Compactness**
+8. **Compositionality**
+9. **Confidence**
+10. **Context**
+11. **Coherence**
+12. **Controllability**
+13. **Causality**
+14. **Agency**
+15. **Compliance & Safety**
+
+### Our Focus: The Modern Trinity (Properties 13, 14, 15)
+
+While the first 12 properties (Correctness, Consistency, Coherence, etc.) are standard metrics heavily focused on basic fluency and text correctness, **our primary research contribution is the formal operationalization of the three novel properties (13, 14, and 15)**. 
+
+Out of the 15 properties, we specifically chose to focus our auditing framework on these main three because they address the critical, missing dimensions required for modern, high-stakes Agentic systems to survive in a regulated world:
+
+#### 13. Causality (The "Why")
 *   **Definition:** The explanation must reveal the true mechanism behind a decision. Intervening on the identified cause must lead to a predictable change in the output.
+*   **Why we chose it:** It solves the "Plausible Excuse" hallucination problem. 
 *   **Metric:** Tested via **Counterfactual Explanations**. If a model claims it rejected a prompt due to a specific rule, the tool injects a counterfactual prompt to see if the decision flips, proving causality over hallucination.
 
-### 2. Agency (The "Action")
+#### 14. Agency (The "Action")
 *   **Definition:** For Agentic AI, the system must transparently explain its multi-step workflows.
+*   **Why we chose it:** It solves the missing dimension of evaluating models that *take actions* rather than just generating text.
 *   **Metric:** Implemented via **Audit Trails**. The tool forces the model to log every decision step, verifying if the final action strictly matches the internal logic.
 
-### 3. Compliance (The "Law")
+#### 15. Compliance & Safety (The "Law")
 *   **Definition:** Verifiable adherence to external safety and legal requirements (e.g., the EU AI Act).
+*   **Why we chose it:** It provides the crucial "Certificate of Explanation" required for enterprise deployment.
 *   **Metric:** Tested via **Data Provenance & RAG**. Leveraging ChromaDB, the framework injects strict regulatory laws and evaluates if the model's generated output conforms to the indexed legal structures.
 
 ---
@@ -64,14 +89,14 @@ graph TD;
 
 ### 1. The Injector (Python Library)
 The core library generates domain-specific adversarial prompts (the **Golden 68 Dataset**). 
-*   *Example (Consistency):* Generating 50 semantically equivalent questions phrased differently to see if answers remain stable.
+*   *Example (Causality):* Injecting counterfactual variables to see if the model's decision-making logic remains stable.
 *   *Example (Compliance):* Injecting illegal requests to verify guardrail triggers.
 
 ### 2. The Judge (Analysis AI)
-A secondary high-reasoning model (e.g., GPT-4o, Gemini Pro) acts as the Judge. It analyzes the target model's output, comparing the response against our 15 definitions and strictly flagging violations.
+A secondary high-reasoning model (e.g., GPT-4o, Gemini Pro) acts as the Judge. It analyzes the target model's output, comparing the response strictly against our definitions for Causality, Agency, and Compliance.
 
 ### 3. The Report (Analysis UX)
-The system outputs a comprehensive visual matrix showing exactly where the model failed (e.g., *"Passed on Compactness, Failed on Causality"*). Failed interactions are extracted into **JSONL datasets** for continuous fine-tuning.
+The system outputs a comprehensive visual matrix showing exactly where the model failed. Failed interactions are extracted into **JSONL datasets** for continuous fine-tuning.
 
 ---
 
