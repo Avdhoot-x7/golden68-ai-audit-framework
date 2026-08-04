@@ -30,43 +30,23 @@ Current Explainable AI (XAI) methods face three distinct challenges in the GenAI
 
 ---
 
-## 🧬 Core Innovation: The 15 Properties of XAI
+## 🧬 Core Innovation: The XAI Property Matrix
 
-We have identified and noted 15 main properties for evaluating the quality of explanations in modern Explainable AI (XAI). These properties are traditionally divided into content, presentation, and user dimensions [1]:
+While our initial research identified 15 distinct properties for evaluating the quality of explanations in modern Explainable AI (divided across content, presentation, and user dimensions), **we specifically isolated and selected the 3 main properties** listed below. 
 
-1. **Correctness & Faithfulness**
-2. **Completeness**
-3. **Consistency & Stability**
-4. **Continuity**
-5. **Contrastivity**
-6. **Covariate Complexity**
-7. **Compactness**
-8. **Compositionality**
-9. **Confidence**
-10. **Context**
-11. **Coherence**
-12. **Controllability**
-13. **Causality**
-14. **Agency**
-15. **Compliance & Safety**
+These 3 novel properties were chosen as the exclusive focus of this framework because they are exceptionally relevant and critically necessary for satisfying the rigorous compliance demands of the **EU AI Act**.
 
-### Our Focus: The Modern Trinity (Properties 13, 14, 15)
-
-While the first 12 properties (Correctness, Consistency, Coherence, etc.) are standard metrics heavily focused on basic fluency and text correctness, **our primary research contribution is the formal operationalization of the three novel properties (13, 14, and 15)**. 
-
-Out of the 15 properties, we specifically chose to focus our auditing framework on these main three because they address the critical, missing dimensions required for modern, high-stakes Agentic systems to survive in a regulated world:
-
-#### 13. Causality (The "Why")
+### 1. Causality (The "Why")
 *   **Definition:** The explanation must reveal the true mechanism behind a decision. Intervening on the identified cause must lead to a predictable change in the output.
 *   **Why we chose it:** It solves the "Plausible Excuse" hallucination problem. 
 *   **Metric:** Tested via **Counterfactual Explanations**. If a model claims it rejected a prompt due to a specific rule, the tool injects a counterfactual prompt to see if the decision flips, proving causality over hallucination.
 
-#### 14. Agency (The "Action")
+### 2. Agency (The "Action")
 *   **Definition:** For Agentic AI, the system must transparently explain its multi-step workflows.
 *   **Why we chose it:** It solves the missing dimension of evaluating models that *take actions* rather than just generating text.
 *   **Metric:** Implemented via **Audit Trails**. The tool forces the model to log every decision step, verifying if the final action strictly matches the internal logic.
 
-#### 15. Compliance & Safety (The "Law")
+### 3. Compliance & Safety (The "Law")
 *   **Definition:** Verifiable adherence to external safety and legal requirements (e.g., the EU AI Act).
 *   **Why we chose it:** It provides the crucial "Certificate of Explanation" required for enterprise deployment.
 *   **Metric:** Tested via **Data Provenance & RAG**. Leveraging ChromaDB, the framework injects strict regulatory laws and evaluates if the model's generated output conforms to the indexed legal structures.
