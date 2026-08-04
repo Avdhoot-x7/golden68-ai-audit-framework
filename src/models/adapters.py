@@ -126,7 +126,6 @@ class OpenRouterAdapter(ModelAdapter):
                 "model": self.model_name,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": temperature,
-                "max_tokens": 512,
             }
             
             response = requests.post(
@@ -189,7 +188,7 @@ class AnthropicAdapter(ModelAdapter):
             client = Anthropic(api_key=self.api_key)
             response = client.messages.create(
                 model=self.model_name,
-                max_tokens=4096,
+                max_tokens=8192,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
                 **kwargs

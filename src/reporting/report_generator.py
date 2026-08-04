@@ -106,6 +106,9 @@ class ReportGenerator:
         
         md_content = self.generate_markdown_report(report)
         
+        # Sanitize text for xhtml2pdf to prevent UnicodeEncodeError crashes
+        md_content = md_content.encode("ascii", "ignore").decode("ascii")
+        
         # Inject RAG historical comparison if possible
         try:
             from src.rag.pipeline import RAGPipeline

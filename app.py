@@ -119,8 +119,35 @@ WIDGET_KEYS = {
 }
 
 
+SESSION_FILE = os.path.join(os.path.dirname(__file__), "data", "session_history.json")
+
+def load_session_history():
+    if os.path.exists(SESSION_FILE):
+        try:
+            with open(SESSION_FILE, "r") as f:
+                data = json.load(f)
+                for k, v in data.items():
+                    if k not in st.session_state:
+                        st.session_state[k] = v
+        except Exception:
+            pass
+
+def save_session_history():
+    try:
+        os.makedirs(os.path.dirname(SESSION_FILE), exist_ok=True)
+        serializable = {}
+        for k, v in st.session_state.items():
+            # Exclude large nested structures or unsupported types, only save primitives
+            if isinstance(v, (str, int, float, bool)) or (isinstance(v, list) and not v):
+                serializable[k] = v
+        with open(SESSION_FILE, "w") as f:
+            json.dump(serializable, f)
+    except Exception:
+        pass
+
 def init_session_state():
     """Initialize session state variables."""
+    load_session_history()
     if "loader" not in st.session_state:
         st.session_state.loader = DatasetLoader()
     
@@ -2312,7 +2339,7 @@ def render_history_page():
                         system_prompt = "You are an expert AI Auditor. Read the provided historical evaluation documents and write a comprehensive, analytical markdown report answering the user's query."
                         user_prompt = f"User Query: {st.session_state.rag_query}\n\nSearch Results Context:\n" + "\n\n---\n\n".join(context_docs)
                         
-                        summary = judge.generate_response(system_prompt, user_prompt, max_tokens=1500)
+                        summary = judge.generate_response(system_prompt, user_prompt)
                         
                         st.markdown("### 📄 RAG Synthesized Report")
                         st.markdown(summary)
@@ -2544,7 +2571,11 @@ def main():
             # Clear session state
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
+            if os.path.exists(SESSION_FILE):
+                os.remove(SESSION_FILE)
             st.rerun()
+            
+    save_session_history()
 
 
 if __name__ == "__main__":
