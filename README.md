@@ -17,7 +17,7 @@
 
 While major research labs push toward "Glass Box" interpretability (e.g., Sparse Autoencoders), the industry faces an immediate regulatory challenge (such as the EU AI Act): there is a critical need for external auditing tools capable of verifying a model’s safety *without* needing access to its proprietary weights.
 
-The **Golden 68 AI Audit Framework** is a Post-Hoc Verification Framework. We have built a "Black Box Auditor" (a Python library and UX) that treats the LLM as a closed system and rigorously tests it against a novel **XAI Evaluation Framework**.
+The **Golden 68 AI Audit Framework** is the ideal **MVP (Minimum Viable Product)** for rigorous testing purposes. We have built a lightweight, post-hoc "Black Box Auditor" (a Python library and UX) that treats the LLM as a closed system and tests it against a novel XAI Evaluation Framework, whether you are querying massive API-gated frontier models or lightweight local models.
 
 ---
 
@@ -39,27 +39,34 @@ These 3 novel properties were chosen as the exclusive focus of this framework be
 ### 1. Causality (The "Why")
 *   **Definition:** The explanation must reveal the true mechanism behind a decision. Intervening on the identified cause must lead to a predictable change in the output.
 *   **Why we chose it:** It solves the "Plausible Excuse" hallucination problem. 
-*   **Metric:** Tested via **Counterfactual Explanations**. If a model claims it rejected a prompt due to a specific rule, the tool injects a counterfactual prompt to see if the decision flips, proving causality over hallucination.
+*   **Metric:** Tested via **Counterfactual Explanations**.
 
 ### 2. Agency (The "Action")
 *   **Definition:** For Agentic AI, the system must transparently explain its multi-step workflows.
-*   **Why we chose it:** It solves the missing dimension of evaluating models that *take actions* rather than just generating text.
-*   **Metric:** Implemented via **Audit Trails**. The tool forces the model to log every decision step, verifying if the final action strictly matches the internal logic.
+*   **Why we chose it:** It solves the missing dimension of evaluating models that *take actions*.
+*   **Metric:** Implemented via **Audit Trails**.
 
 ### 3. Compliance & Safety (The "Law")
 *   **Definition:** Verifiable adherence to external safety and legal requirements (e.g., the EU AI Act).
 *   **Why we chose it:** It provides the crucial "Certificate of Explanation" required for enterprise deployment.
-*   **Metric:** Tested via **Data Provenance & RAG**. Leveraging ChromaDB, the framework injects strict regulatory laws and evaluates if the model's generated output conforms to the indexed legal structures.
+*   **Metric:** Tested via **Data Provenance & RAG**. 
 
 ---
 
-## ⚙️ Methodology: The "Prompt Injection & Analysis" Loop
+## ⚙️ Methodology & Dataset Provenance
 
-Inspired by the "Humanity’s Last Exam" (HLE) methodology, we evaluate reasoning through rigorous output testing rather than internal inspection. 
+Inspired by the "Humanity’s Last Exam" (HLE) methodology, we evaluate reasoning through rigorous output testing.
+
+### The "Golden 68" Dataset Creation
+To effectively test the boundaries of frontier models, generic prompts are not enough. We engineered the **Golden 68** dataset—a highly niche, adversarial collection of exactly 68 test prompts. 
+*   **Human Verified:** These prompts were meticulously formed, refined, and verified by human hands to target specific vulnerabilities in Causality, Agency, and Compliance. 
+*   **Ground Truth:** Each prompt is paired with a strict "expected behavior" benchmark.
+
+### The "Prompt Injection & Analysis" Loop
 
 ```mermaid
 graph TD;
-    A[The Injector: Python Library] -->|Adversarial Prompts| B(Target Black-Box LLM);
+    A[The Injector: Golden 68 Dataset] -->|Adversarial Prompts| B(Target Black-Box LLM);
     C[EU AI Act Vector DB] --> D{The Judge: Analysis AI};
     B -->|Model Response| D;
     D --> E[Human Validation];
@@ -67,24 +74,40 @@ graph TD;
     D --> G[The Report: Visual Matrix & JSONL];
 ```
 
-### 1. The Injector (Python Library)
-The core library generates domain-specific adversarial prompts (the **Golden 68 Dataset**). 
-*   *Example (Causality):* Injecting counterfactual variables to see if the model's decision-making logic remains stable.
-*   *Example (Compliance):* Injecting illegal requests to verify guardrail triggers.
-
-### 2. The Judge (Analysis AI)
-A secondary high-reasoning model (e.g., GPT-4o, Gemini Pro) acts as the Judge. It analyzes the target model's output, comparing the response strictly against our definitions for Causality, Agency, and Compliance.
-
-### 3. The Report (Analysis UX)
-The system outputs a comprehensive visual matrix showing exactly where the model failed. Failed interactions are extracted into **JSONL datasets** for continuous fine-tuning.
+1. **The Injector:** The framework injects the highly niche Golden 68 adversarial prompts directly into the Target Model. You can test remote models (via **API Keys**) or test your own **local model setup**.
+2. **The Judge:** A secondary high-reasoning model acts as the Judge. It analyzes the target model's output strictly against our defined properties and the EU AI Act laws retrieved via ChromaDB RAG.
+3. **The Report:** The system outputs a visual matrix detailing exactly where the model failed, saving those edge cases to **JSONL datasets** for immediate fine-tuning.
 
 ---
 
-## 📈 Industry Relevance
+## 📂 Technical Architecture & File Structure
 
-By focusing on a **Regulation-ready XAI framework**, this project solves an immediate business problem. Companies cannot deploy "Black Box" models under new laws without definitive proof of safety. 
+This framework is built for modularity, safety, and rapid testing. The deep directory structure enables seamless MVP deployment:
 
-Our tool provides that proof, operating as the essential bridge between the model and a legal **"Certificate of Explanation."**
+```text
+golden68-ai-audit-framework/
+├── app.py                      # Main Streamlit user interface entry point
+├── conf/
+│   └── config.yaml             # System configurations and prompt weights
+├── data/
+│   └── dataset/
+│       └── golden68.json       # The human-verified Golden 68 benchmark dataset
+├── src/
+│   ├── api/                    # API Adapters (OpenAI, Anthropic, NVIDIA, Local)
+│   ├── audit/                  # Human Audit and UI components
+│   ├── data_processing/        # Tools for parsing the EU AI Act XML files
+│   ├── database/
+│   │   └── vector_store.py     # ChromaDB interface for RAG functionality
+│   ├── evaluation/             # Core scoring loops and metric tracking
+│   ├── judges/
+│   │   └── llm_judge.py        # The prompt templates & logic for the Judge AI
+│   ├── rag/                    # Retrieval-Augmented Generation pipeline
+│   ├── reporting/              # PDF and JSONL output generation
+│   └── validation/
+│       └── cohens_kappa.py     # Statistical agreement verification
+├── test_framework.py           # Automated CI/CD headless test script
+└── requirements.txt            # Python dependencies
+```
 
 ---
 
