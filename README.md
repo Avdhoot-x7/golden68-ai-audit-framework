@@ -139,3 +139,28 @@ golden68-ai-audit-framework/
    ```bash
    streamlit run app.py
    ```
+
+---
+
+## 🗺️ Roadmap & Future Work
+
+As this MVP proves the viability of Behavioral Interpretability for auditing, our next phases of research include:
+- [ ] **Dynamic RAG Context Retrieval:** Fully integrating the ChromaDB pipeline to dynamically fetch and inject relevant EU AI Act articles for the LLM judge during live evaluation.
+- [ ] **Expanded Datasets:** Scaling the Golden 68 dataset into a larger open-source compliance benchmark.
+- [ ] **Local vLLM Integration:** Adding native support for high-throughput local model serving via vLLM.
+
+---
+
+## 📝 Citation
+
+If you use this framework or the Golden 68 dataset in your research, please cite:
+
+```bibtex
+@software{golden68_framework_2026,
+  author = {Avdhoot},
+  title = {Golden 68 AI Audit Framework: Operationalizing XAI for the Regulatory Era},
+  year = {2026},
+  publisher = {GitHub},
+  url = {https://github.com/Avdhoot-x7/golden68-ai-audit-framework}
+}
+```
