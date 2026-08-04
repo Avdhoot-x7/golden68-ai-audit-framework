@@ -136,8 +136,8 @@ Aim for at least 70% pass rate for production deployment.
 ### Model Comparison
 
 1. Run evaluations with different models
-2. Navigate to **Model Comparison** tab
-3. View leaderboard and comparative analysis
+2. Review each run through the history view
+3. Compare average score, pass rate, and heatmap outputs
 
 ## Common Issues
 
@@ -195,7 +195,7 @@ Here's a recommended workflow for your Final Year Project:
 ### Week 2: Full Evaluation
 - Run full 68-prompt evaluation
 - Test with 2-3 different models
-- Generate comparison reports
+- Generate evaluation reports
 
 ### Week 3: Human Audit
 - Conduct human verification on 20-30 prompts

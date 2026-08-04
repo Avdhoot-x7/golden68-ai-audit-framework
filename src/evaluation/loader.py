@@ -1,36 +1,45 @@
-"""
-Golden 68 - Dataset Loader
-Loads and filters the Golden 68 dataset
-"""
-
 import json
-import os
 from typing import List, Dict, Any, Optional
+
+from src.constants import DEFAULT_BENCHMARK_DATASET_PATH, PILLAR_SET
 
 
 class DatasetLoader:
-    """Loads and manages the Golden 68 dataset."""
+    """Load and manage the Golden 68 benchmark dataset only."""
     
     def __init__(self, dataset_path: str = None):
-        if dataset_path is None:
-            dataset_path = os.path.join(
-                os.path.dirname(__file__),
-                "..", "..", "data", "dataset", "golden68.json"
-            )
-        self.dataset_path = dataset_path
+        self.dataset_path = dataset_path or str(DEFAULT_BENCHMARK_DATASET_PATH)
         self.dataset = self._load_dataset()
+        
+        # Sync dataset to vector store for RAG
+        try:
+            from src.database.vector_store import get_vector_store
+            db = get_vector_store()
+            db.sync_dataset(self.dataset_path)
+        except Exception as e:
+            print(f"Vector DB Sync Warning: {e}")
     
     def _load_dataset(self) -> Dict[str, Any]:
-        """Load the dataset from JSON file."""
+        """Load the benchmark dataset from JSON and validate pillar consistency."""
         with open(self.dataset_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            dataset = json.load(f)
+
+        if isinstance(dataset, list):
+            dataset = {"prompts": dataset}
+
+        prompts = dataset.get("prompts", [])
+        invalid_pillars = sorted({p.get("pillar", "unknown") for p in prompts if p.get("pillar") not in PILLAR_SET})
+        if invalid_pillars:
+            raise ValueError(f"Dataset contains unsupported pillars: {', '.join(invalid_pillars)}")
+
+        return dataset
     
     def get_all_prompts(self) -> List[Dict[str, Any]]:
         """Get all prompts from the dataset."""
         return self.dataset.get("prompts", [])
     
     def get_prompts_by_pillar(self, pillar: str) -> List[Dict[str, Any]]:
-        """Get prompts filtered by pillar (Causality, Compliance, Consistency)."""
+        """Get prompts filtered by one of the configured benchmark pillars."""
         return [p for p in self.get_all_prompts() if p.get("pillar") == pillar]
     
     def get_prompts_by_level(self, level: int) -> List[Dict[str, Any]]:
@@ -106,8 +115,8 @@ class DatasetLoader:
         return stats
     
     def get_pillar_names(self) -> List[str]:
-        """Get all pillar names in the dataset."""
-        return list(set(p.get("pillar") for p in self.get_all_prompts()))
+        """Get the benchmark pillar names present in the dataset."""
+        return sorted(set(p.get("pillar") for p in self.get_all_prompts()))
     
     def get_level_range(self) -> range:
         """Get the range of complexity levels."""

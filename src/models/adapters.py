@@ -436,7 +436,7 @@ class NVIDIAAdapter(ModelAdapter):
         
         # Map deprecated/incorrect names to valid ones
         model_mapping = {
-            "openai/gpt-oss-120b": "mistralai/mixtral-8x7b-instruct-v0.1",
+            # "openai/gpt-oss-120b": "mistralai/mixtral-8x7b-instruct-v0.1", # Disabled to allow true gpt-oss-120b
             "openai/gpt-oss-20b": "mistralai/mistral-small-24b-instruct",
             "meta/llama-3.1-405b-instruct": "meta/llama-3.1-405b-instruct",  # Now available
             "nvidia/llama-3.1-nemotron-70b-instruct": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
@@ -464,6 +464,16 @@ class NVIDIAAdapter(ModelAdapter):
                 api_key=self.api_key
             )
             
+            extra_body = kwargs.pop("extra_body", {})
+            if "gemma-4-31b" in self.model_name.lower():
+                extra_body["chat_template_kwargs"] = {"enable_thinking": True}
+            elif "nemotron-3-ultra" in self.model_name.lower():
+                extra_body["chat_template_kwargs"] = {"enable_thinking": True}
+                extra_body["reasoning_budget"] = max_tokens
+                
+            if extra_body:
+                kwargs["extra_body"] = extra_body
+
             response = client.chat.completions.create(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
@@ -473,7 +483,14 @@ class NVIDIAAdapter(ModelAdapter):
                 **kwargs
             )
             
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            reasoning = getattr(response.choices[0].message, "reasoning_content", None)
+            
+            if reasoning and content:
+                return f"<reasoning>{reasoning}</reasoning>\n{content}"
+            elif content:
+                return content
+            return ""
             
         except Exception as e:
             err = str(e)
@@ -664,35 +681,50 @@ class AutoRecoveryModelClient(ResilientModelClient):
         return None
     
     def generate(self, prompt: str, temperature: float = 0.7, **kwargs) -> str:
-        """Generate with auto-recovery from deprecated models."""
+        """Generate with auto-recovery from deprecated models and exhausted API keys."""
         last_error = None
         
         while True:
-            try:
-                adapter = self._get_current_adapter()
-                response = adapter.generate(prompt, temperature, **kwargs)
-                
-                # Check for deprecation/404 errors
-                if self._is_model_deprecated_error(response):
-                    self.fallback_tried.append(self.model_name)
-                    fallback = self._get_fallback_model()
-                    if fallback:
-                        print(f"⚠️ Model {self.model_name} deprecated. Switching to {fallback}...")
-                        self.model_name = fallback
-                        continue
+            key_exhausted = False
+            for i in range(self.current_key_index, len(self.api_keys)):
+                try:
+                    adapter = self._get_current_adapter()
+                    response = adapter.generate(prompt, temperature, **kwargs)
+                    
+                    # Check for deprecation/404 errors
+                    if self._is_model_deprecated_error(response):
+                        self.fallback_tried.append(self.model_name)
+                        fallback = self._get_fallback_model()
+                        if fallback:
+                            print(f"⚠️ Model {self.model_name} deprecated. Switching to {fallback}...")
+                            self.model_name = fallback
+                            break
+                        else:
+                            return f"Error: Model {self.original_model} and all fallbacks deprecated"
+                    
+                    if adapter.is_credit_error(response):
+                        raise APIKeyExhaustedError(
+                            self.provider,
+                            f"API key #{self.current_key_index+1} returned credit error"
+                        )
+                    
+                    return response
+                    
+                except APIKeyExhaustedError as e:
+                    last_error = e
+                    self.current_key_index += 1
+                    key_exhausted = True
+                    
+                    if self.current_key_index < len(self.api_keys):
+                        print(f"⚠️ API key #{self.current_key_index} exhausted. Switching to key #{self.current_key_index+1}...")
                     else:
-                        return f"Error: Model {self.original_model} and all fallbacks deprecated"
+                        raise
+            
+            if not key_exhausted and not self._is_model_deprecated_error(response):
+                break
                 
-                if adapter.is_credit_error(response):
-                    raise APIKeyExhaustedError(
-                        self.provider,
-                        f"API key #{self.current_key_index+1} returned credit error"
-                    )
-                
-                return response
-                
-            except APIKeyExhaustedError:
-                raise
+        if last_error:
+            raise last_error
     
     def _is_model_deprecated_error(self, response: str) -> bool:
         """Check if response indicates model is deprecated."""

@@ -11,7 +11,6 @@ PROVIDER_LIMITS = {
     "gemini": {"rpm": 15, "tpm": 1000000, "daily_limit": 1500, "cost_per_1k": 0.00015},
     "openai": {"rpm": 500, "tpm": 150000, "daily_limit": 10000, "cost_per_1k": 0.002},
     "openrouter": {"rpm": 200, "tpm": 200000, "daily_limit": 5000, "cost_per_1k": 0.001},
-    "anthropic": {"rpm": 50, "tpm": 100000, "daily_limit": 5000, "cost_per_1k": 0.003},
     "nvidia": {"rpm": 120, "tpm": 500000, "daily_limit": 10000, "cost_per_1k": 0.0005}
 }
 

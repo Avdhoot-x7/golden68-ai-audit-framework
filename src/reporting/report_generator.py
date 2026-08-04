@@ -1,288 +1,177 @@
-"""
-Golden 68 - Report Generator
-Generates dual reports: LLM-Judge Report and Human-Audit Report
-"""
+"""Generate minimal reports centered on score summaries and heatmap data."""
 
 import json
-import os
 from datetime import datetime
-from typing import Dict, Any, List, Optional
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import Any, Dict, List
 
-if TYPE_CHECKING:
-    from ..evaluation.scorer import Golden68Scorer
+from src.constants import REPORTS_DIR
+from src.reporting.aggregation import build_heatmap_data
 
 
 class ReportGenerator:
-    """Generates comprehensive evaluation reports."""
-    
-    def __init__(self, reports_dir: str = None):
-        if reports_dir is None:
-            reports_dir = os.path.join(
-                os.path.dirname(__file__),
-                "..", "..", "data", "reports"
-            )
-        self.reports_dir = reports_dir
-        os.makedirs(self.reports_dir, exist_ok=True)
-    
-    def generate_llm_judge_report(
-        self,
-        model_name: str,
-        judge_results: Dict[str, Any],
-        pillar_scores: Dict[str, Any],
-        level_scores: Dict[int, Any]
-    ) -> Dict[str, Any]:
-        """Generate the LLM-Judge automated assessment report."""
-        
-        total = judge_results.get("total_evaluations", 0)
-        overall_score = judge_results.get("overall_score", 0)
-        pass_rate = judge_results.get("pass_rate", 0)
-        
-        report = {
+    """Generate lightweight reports without validation or composite metrics."""
+
+    def __init__(self, reports_dir: str | None = None):
+        self.reports_dir = Path(reports_dir) if reports_dir else REPORTS_DIR
+        self.reports_dir.mkdir(parents=True, exist_ok=True)
+
+    def generate_llm_judge_report(self, model_name: str, result_bundle: Dict[str, Any]) -> Dict[str, Any]:
+        """Build the report payload for one evaluation run."""
+        return {
             "report_type": "LLM_JUDGE_REPORT",
             "model_name": model_name,
             "generated_at": datetime.now().isoformat(),
             "summary": {
-                "total_prompts_evaluated": total,
-                "overall_score": round(overall_score, 2),
-                "overall_pass_rate": round(pass_rate * 100, 1),
-                "grade": self._calculate_grade(overall_score)
+                "total_prompts_evaluated": result_bundle.get("total", 0),
+                "average_score": result_bundle.get("average_score", 0.0),
+                "pass_rate": result_bundle.get("pass_rate", 0.0),
+                "reliability": result_bundle.get("reliability", {"metric": None, "value": None}),
             },
-            "pillar_breakdown": {},
-            "level_breakdown": {},
-            "detailed_evaluations": judge_results.get("evaluations", []),
-            "recommendations": self._generate_recommendations(pillar_scores)
+            "pillar_breakdown": result_bundle.get("pillar_scores", {}),
+            "level_breakdown": result_bundle.get("level_scores", {}),
+            "heatmap": build_heatmap_data(result_bundle.get("evaluations", [])),
+            "detailed_evaluations": result_bundle.get("evaluations", []),
         }
-        
-        # Add pillar scores
-        for pillar, scores in pillar_scores.items():
-            report["pillar_breakdown"][pillar] = {
-                "average_score": scores.get("average_score", 0),
-                "pass_rate": f"{scores.get('pass_rate', 0) * 100:.1f}%",
-                "prompts_tested": scores.get("total_evaluated", 0)
-            }
-        
-        # Add level scores
-        for level, scores in level_scores.items():
-            report["level_breakdown"][f"Level_{level}"] = {
-                "average_score": scores.get("average_score", 0),
-                "pass_rate": f"{scores.get('pass_rate', 0) * 100:.1f}%",
-                "prompts_tested": scores.get("total_evaluated", 0)
-            }
-        
-        return report
-    
-    def generate_human_audit_report(
-        self,
-        audit_results: Dict[str, Any],
-        audit_statistics: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Generate the Human-Audit ground-truth report."""
-        
-        total = audit_statistics.get("total_audits", 0)
-        
-        report = {
-            "report_type": "HUMAN_AUDIT_REPORT",
-            "generated_at": datetime.now().isoformat(),
-            "summary": {
-                "total_audits_completed": total,
-                "agree_rate": f"{audit_statistics.get('agree_rate', 0) * 100:.1f}%",
-                "partial_agreement_rate": f"{audit_statistics.get('partial_rate', 0) * 100:.1f}%",
-                "disagree_rate": f"{audit_statistics.get('disagree_rate', 0) * 100:.1f}%",
-                "average_human_score": round(audit_statistics.get("average_human_score", 0), 2),
-                "average_judge_score": round(audit_statistics.get("average_judge_score", 0), 2)
-            },
-            "verdict_breakdown": {
-                "agree": audit_statistics.get("agree_count", 0),
-                "partial": audit_statistics.get("partial_count", 0),
-                "disagree": audit_statistics.get("disagree_count", 0)
-            },
-            "detailed_audits": audit_results.get("audits", [])
-        }
-        
-        return report
-    
-    def generate_comparison_report(
-        self,
-        llm_judge_report: Dict[str, Any],
-        human_audit_report: Dict[str, Any],
-        agreement_delta: Dict[str, Any],
-        pillar_comparison: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Generate the comparison/validation report."""
-        
-        report = {
-            "report_type": "COMPARISON_REPORT",
-            "generated_at": datetime.now().isoformat(),
-            "agreement_analysis": {
-                "overall_delta": agreement_delta.get("agreement_delta", 0),
-                "delta_rating": agreement_delta.get("rating", "N/A"),
-                "mean_absolute_difference": agreement_delta.get("mean_absolute_difference", 0),
-                "exact_agreement_rate": f"{agreement_delta.get('exact_agreement_rate', 0) * 100:.1f}%",
-                "evaluations_compared": agreement_delta.get("count", 0)
-            },
-            "pillar_agreement": {},
-            "key_findings": [],
-            "validation_status": self._determine_validation_status(agreement_delta)
-        }
-        
-        # Add pillar comparison
-        for pillar, delta in pillar_comparison.items():
-            report["pillar_agreement"][pillar] = {
-                "delta": delta.get("agreement_delta", 0),
-                "rating": delta.get("rating", "N/A")
-            }
-        
-        # Add key findings
-        if agreement_delta.get("agreement_delta", 0) >= 0.8:
-            report["key_findings"].append(
-                "Judge demonstrates excellent alignment with human evaluation"
-            )
-        elif agreement_delta.get("agreement_delta", 0) >= 0.6:
-            report["key_findings"].append(
-                "Judge shows good correlation with human evaluation"
-            )
-        else:
-            report["key_findings"].append(
-                "Significant divergence between judge and human evaluation requires investigation"
-            )
-        
-        return report
-    
-    def save_report(
-        self, 
-        report: Dict[str, Any], 
-        prefix: str = "report"
-    ) -> str:
-        """Save report to file."""
+
+    def save_report(self, report: Dict[str, Any], prefix: str = "report") -> str:
+        """Save a report payload to disk and log to vector database."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{prefix}_{timestamp}.json"
-        filepath = os.path.join(self.reports_dir, filename)
+        filepath = self.reports_dir / f"{prefix}_{timestamp}.json"
+        filepath.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
-        
-        return filepath
-    
-    def generate_markdown_report(
-        self,
-        llm_judge_report: Dict[str, Any],
-        human_audit_report: Dict[str, Any] = None,
-        comparison_report: Dict[str, Any] = None
-    ) -> str:
-        """Generate a markdown-formatted report for display."""
-        
-        md = f"""# Golden 68 - Evaluation Report
-
-**Model:** {llm_judge_report.get('model_name', 'Unknown')}  
-**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
----
-
-## Executive Summary
-
-| Metric | Value |
-|--------|-------|
-| Total Prompts Evaluated | {llm_judge_report['summary']['total_prompts_evaluated']} |
-| Overall Score | {llm_judge_report['summary']['overall_score']}/10 |
-| Pass Rate | {llm_judge_report['summary']['overall_pass_rate']}% |
-| Grade | {llm_judge_report['summary']['grade']} |
-
-"""
-        
-        # Pillar Breakdown
-        md += "## Pillar Breakdown\n\n"
-        md += "| Pillar | Avg Score | Pass Rate | Prompts |\n"
-        md += "|--------|-----------|-----------|----------|\n"
-        for pillar, data in llm_judge_report.get("pillar_breakdown", {}).items():
-            md += f"| {pillar} | {data['average_score']}/10 | {data['pass_rate']} | {data['prompts_tested']} |\n"
-        
-        md += "\n"
-        
-        # Level Breakdown
-        md += "## Complexity Level Breakdown\n\n"
-        md += "| Level | Avg Score | Pass Rate | Prompts |\n"
-        md += "|-------|-----------|-----------|----------|\n"
-        for level, data in llm_judge_report.get("level_breakdown", {}).items():
-            md += f"| {level} | {data['average_score']}/10 | {data['pass_rate']} | {data['prompts_tested']} |\n"
-        
-        # Human Audit Results
-        if human_audit_report:
-            md += "\n---\n\n## Human Audit Summary\n\n"
-            md += f"| Metric | Value |\n"
-            md += f"|--------|-------|\n"
-            md += f"| Total Audits | {human_audit_report['summary']['total_audits_completed']} |\n"
-            md += f"| Agree Rate | {human_audit_report['summary']['agree_rate']} |\n"
-            md += f"| Disagree Rate | {human_audit_report['summary']['disagree_rate']} |\n"
-        
-        # Comparison Results
-        if comparison_report:
-            md += "\n---\n\n## Agreement Delta Analysis\n\n"
-            md += f"**Overall Agreement Delta:** {comparison_report['agreement_analysis']['overall_delta']}\n\n"
-            md += f"**Validation Status:** {comparison_report['validation_status']}\n\n"
+        # Log to Vector Store
+        try:
+            from src.database.vector_store import get_vector_store
+            db = get_vector_store()
+            evaluations = report.get("detailed_evaluations", [])
             
-            md += "### Pillar Agreement\n\n"
-            md += "| Pillar | Delta | Rating |\n"
-            md += "|--------|-------|--------|\n"
-            for pillar, data in comparison_report.get("pillar_agreement", {}).items():
-                md += f"| {pillar} | {data['delta']} | {data['rating']} |\n"
+            # Map to format expected by log_evaluations
+            eval_data_list = []
+            for ev in evaluations:
+                eval_data = {
+                    "session_id": timestamp,
+                    "prompt_id": ev.get("prompt", {}).get("id", "unknown"),
+                    "prompt_text": ev.get("prompt", {}).get("prompt", ""),
+                    "model_name": report.get("model_name", "unknown"),
+                    "provider": report.get("provider", "unknown"),  
+                    "score": ev.get("judge_result", {}).get("score", 0),
+                    "rationale": ev.get("judge_result", {}).get("rationale", ""),
+                    "response_text": ev.get("model_response", "")
+                }
+                eval_data_list.append(eval_data)
+                
+            if eval_data_list:
+                db.log_evaluations(eval_data_list)
+        except Exception as e:
+            print(f"Vector DB Logging Error: {e}")
+
+        return str(filepath)
+
+    def generate_markdown_report(self, report: Dict[str, Any]) -> str:
+        """Generate a markdown summary with the heatmap as the central artifact."""
+        summary = report.get("summary", {})
+        heatmap = report.get("heatmap", {})
+
+        md = [
+            "# Golden 68 Evaluation Report",
+            "",
+            f"**Model:** {report.get('model_name', 'Unknown')}",
+            f"**Generated:** {report.get('generated_at', datetime.now().isoformat())}",
+            "",
+            "## Summary",
+            "",
+            f"- Total prompts evaluated: {summary.get('total_prompts_evaluated', 0)}",
+            f"- Average score: {summary.get('average_score', 0.0):.2f}/10",
+            f"- Pass rate: {summary.get('pass_rate', 0.0) * 100:.1f}%",
+            f"- Reliability metric: {summary.get('reliability', {}).get('metric')}",
+            f"- Reliability value: {summary.get('reliability', {}).get('value')}",
+            f"- Human audits: {len(report.get('human_audits', []))}",
+            "",
+            "## Heatmap",
+            "",
+            f"- Pillars: {', '.join(heatmap.get('pillars', []))}",
+            f"- Levels: {', '.join(str(level) for level in heatmap.get('levels', []))}",
+        ]
+
+        return "\n".join(md)
+
+    def generate_pdf_report(self, report: Dict[str, Any], prefix: str = "report") -> str:
+        """Generate a styled PDF report using Markdown and xhtml2pdf."""
+        import markdown
+        from xhtml2pdf import pisa
         
-        # Recommendations
-        md += "\n---\n\n## Recommendations\n\n"
-        for i, rec in enumerate(llm_judge_report.get("recommendations", []), 1):
-            md += f"{i}. {rec}\n"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filepath = self.reports_dir / f"{prefix}_{timestamp}.pdf"
         
-        return md
-    
-    def _calculate_grade(self, score: float) -> str:
-        """Calculate letter grade from score."""
-        if score >= 9:
-            return "A+"
-        elif score >= 8:
-            return "A"
-        elif score >= 7:
-            return "B"
-        elif score >= 6:
-            return "C"
-        elif score >= 5:
-            return "D"
-        else:
-            return "F"
-    
-    def _generate_recommendations(self, pillar_scores: Dict[str, Any]) -> List[str]:
-        """Generate recommendations based on pillar scores."""
-        recommendations = []
+        md_content = self.generate_markdown_report(report)
         
-        for pillar, scores in pillar_scores.items():
-            avg_score = scores.get("average_score", 0)
+        # Inject RAG historical comparison if possible
+        try:
+            from src.rag.pipeline import RAGPipeline
+            rag = RAGPipeline()
+            model_name = report.get('model_name', '')
+            if model_name:
+                # Query historical performance for this model
+                hist_results = rag.query_evaluations(query_text=model_name, n_results=50, where={"model_name": model_name})
+                if hist_results:
+                    scores = [res.get("metadata", {}).get("score", 0) for res in hist_results if "metadata" in res]
+                    if scores:
+                        hist_avg = sum(scores) / len(scores)
+                        md_content += f"\n\n## Historical RAG Context\n\n"
+                        md_content += f"Historically, `{model_name}` has an average score of **{hist_avg:.2f}/10** across {len(scores)} recorded evaluations in the vector database.\n"
+                        current_avg = report.get("summary", {}).get("average_score", 0.0)
+                        if current_avg > hist_avg:
+                            md_content += f"This run (**{current_avg:.2f}**) shows an **improvement** over the historical average.\n"
+                        else:
+                            md_content += f"This run (**{current_avg:.2f}**) is **below or equal** to the historical average.\n"
+        except Exception as e:
+            print(f"Warning: RAG historical context failed during PDF generation: {e}")
             
-            if avg_score < 5:
-                recommendations.append(
-                    f"Critical: {pillar} shows significant weaknesses (score: {avg_score}/10). "
-                    f"Requires immediate attention and improvement."
-                )
-            elif avg_score < 7:
-                recommendations.append(
-                    f"{pillar} needs improvement (score: {avg_score}/10). "
-                    f"Consider targeted training or system enhancements."
-                )
-            else:
-                recommendations.append(
-                    f"{pillar} performs well (score: {avg_score}/10). "
-                    f"Maintain performance and continue monitoring."
-                )
+        # Add a section for critical failures (score < 10)
+        detailed_evals = report.get("detailed_evaluations", [])
+        failures = [ev for ev in detailed_evals if ev.get("judge_result", {}).get("score", 10.0) < 10.0]
         
-        return recommendations
-    
-    def _determine_validation_status(self, agreement_delta: Dict[str, Any]) -> str:
-        """Determine overall validation status."""
-        delta = agreement_delta.get("agreement_delta", 0)
+        if failures:
+            md_content += "\n## Critical Failures & Imperfections\n\n"
+            for fail in failures[:5]:  # Limit to top 5 in PDF to save space
+                score = fail.get("judge_result", {}).get("score", 0)
+                md_content += f"### Score: {score}/10\n"
+                md_content += f"**Prompt:** {fail.get('prompt', {}).get('prompt', '')}\n\n"
+                md_content += f"**Model Response:** {fail.get('model_response', '')[:200]}...\n\n"
+                md_content += f"**Judge Rationale:** {fail.get('judge_result', {}).get('rationale', '')}\n\n"
+                md_content += "---\n"
+                
+        # Convert to HTML
+        html_content = markdown.markdown(md_content)
         
-        if delta >= 0.8:
-            return "VALIDATED - Judge shows excellent human alignment"
-        elif delta >= 0.6:
-            return "MOSTLY VALIDATED - Judge correlation is acceptable"
-        elif delta >= 0.4:
-            return "PARTIALLY VALIDATED - Some divergence observed"
-        else:
-            return "NEEDS REVIEW - Significant disagreement with human evaluation"
+        # Add basic CSS styling
+        styled_html = f"""
+        <html>
+        <head>
+        <style>
+            @page {{ size: a4; margin: 2cm; }}
+            body {{ font-family: Helvetica, Arial, sans-serif; font-size: 12pt; line-height: 1.5; color: #333; }}
+            h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }}
+            h2 {{ color: #2980b9; margin-top: 20px; }}
+            h3 {{ color: #e74c3c; font-size: 14pt; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+            th, td {{ border: 1px solid #bdc3c7; padding: 8px; text-align: left; }}
+            th {{ background-color: #ecf0f1; }}
+            code {{ background-color: #f8f9fa; padding: 2px 4px; border-radius: 4px; font-family: monospace; }}
+            .highlight {{ background-color: #fef9e7; padding: 10px; border-left: 4px solid #f1c40f; margin-bottom: 10px; }}
+        </style>
+        </head>
+        <body>
+        {html_content}
+        </body>
+        </html>
+        """
+        
+        with open(filepath, "w+b") as result_file:
+            pisa_status = pisa.CreatePDF(styled_html, dest=result_file)
+            
+        if pisa_status.err:
+            raise Exception("PDF generation failed.")
+            
+        return str(filepath)

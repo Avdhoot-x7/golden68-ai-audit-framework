@@ -1,15 +1,13 @@
 streamlit>=1.28.0
 google-generativeai>=0.3.0
 openai>=1.0.0
-anthropic>=0.8.0
 pandas>=2.0.0
 plotly>=5.18.0
 pyyaml>=6.0
 requests>=2.31.0
 python-dotenv>=1.0.0
-<<<<<<< HEAD
 scipy>=1.10.0
-=======
-scipy
-spacy
->>>>>>> 7894163 (Update project files)
+chromadb>=0.4.22
+sentence-transformers>=2.3.1
+markdown>=3.6.0
+xhtml2pdf>=0.2.13

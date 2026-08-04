@@ -15,25 +15,19 @@ models:
       - "gemini-2.0-flash"
       - "openai/gpt-4"
       - "openai/gpt-4o"
-      - "anthropic/claude-3-opus"
+      - "meta/llama-3.1-70b-instruct"
 
 # Dataset Settings
 dataset:
-  total_prompts: 68
-  pillars:
-    - Causality
-    - Compliance
-    - Consistency
+  default_name: "golden68"
+  default_path: "data/dataset/golden68.json"
+  archival_name: "source_750"
+  archival_path: "data/dataset/archive/source_750.json"
   levels: [1, 2, 3, 4, 5]
 
 # Scoring Settings
 scoring:
   judge_scale: 10
-  human_scale: 10
-  agreement_thresholds:
-    excellent: 0.8
-    good: 0.6
-    fair: 0.4
 
 # Output Settings
 output:

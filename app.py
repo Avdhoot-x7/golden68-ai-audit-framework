@@ -23,11 +23,12 @@ from plotly.subplots import make_subplots
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from src.evaluation.loader import DatasetLoader
-from src.evaluation.scorer import Golden68Scorer, AgreementDeltaCalculator
-from src.evaluation.comparison import MultiModelComparison, StatisticalAnalyzer, ErrorAnalyzer, BenchmarkExporter
+from src.evaluation.scorer import Golden68Scorer
+from src.validation.cohens_kappa import calculate_kappa_from_judge_and_human_records
 from src.models.adapters import ModelAdapterFactory, ResilientModelClient, APIKeyExhaustedError, ModelNotFoundError, AutoRecoveryModelClient, NVIDIAAdapter
 from src.evaluation.cost_tracker import APICostTracker, SmartResume
 from src.judges.llm_judge import LLMJudge
+from src.database.vector_store import get_vector_store
 from src.audit.human_audit import HumanAuditManager, HumanAuditRecord
 
 # Page configuration
@@ -339,13 +340,21 @@ def render_setup_page():
             help="Enter your API key"
         )
         
-        # Backup Judge API key (optional)
-        st.text_input(
-            "🔑 Backup Judge Key (optional)",
-            type="password",
-            key="backup_judge_key",
-            help="Backup key if primary runs out"
-        )
+        # Backup Judge API keys
+        if "num_extra_judge_keys" not in st.session_state:
+            st.session_state.num_extra_judge_keys = 0
+            
+        for i in range(st.session_state.num_extra_judge_keys):
+            st.text_input(
+                f"🔑 Backup Judge Key {i+1} (optional)",
+                type="password",
+                key=f"extra_judge_key_{i}",
+                help="Backup key if previous runs out"
+            )
+            
+        if st.button("➕ Add another backup key", key="add_judge_key_btn"):
+            st.session_state.num_extra_judge_keys += 1
+            st.rerun()
     
     with col2:
         st.markdown("### 🔬 Testing LLM (model to evaluate)")
@@ -418,20 +427,28 @@ def render_setup_page():
         
         # Test API key
         st.text_input(
-            "🔑 NVIDIA API Key",
+            "🔑 API Key for Test Model",
             type="password",
             key=WIDGET_KEYS["test_key"],
             value="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",
-            help="Enter your NVIDIA API key"
+            help="Enter your API key"
         )
         
-        # Backup Test API key (optional)
-        st.text_input(
-            "🔑 Backup Test Key (optional)",
-            type="password",
-            key="backup_test_key",
-            help="Backup key if primary runs out of credits"
-        )
+        # Backup Test API keys
+        if "num_extra_test_keys" not in st.session_state:
+            st.session_state.num_extra_test_keys = 0
+            
+        for i in range(st.session_state.num_extra_test_keys):
+            st.text_input(
+                f"🔑 Backup Test Key {i+1} (optional)",
+                type="password",
+                key=f"extra_test_key_{i}",
+                help="Backup key if previous runs out of credits"
+            )
+            
+        if st.button("➕ Add another backup key", key="add_test_key_btn"):
+            st.session_state.num_extra_test_keys += 1
+            st.rerun()
     
     st.markdown("---")
     
@@ -482,7 +499,7 @@ def render_setup_page():
     with col2:
         prompt_limit = st.number_input(
             "Max prompts to test:",
-            min_value=5,
+            min_value=1,
             max_value=68,
             value=15,
             help="For quick testing, limit the number of prompts"
@@ -555,13 +572,7 @@ def render_setup_page():
             final_judge_key = st.session_state.get(WIDGET_KEYS["judge_key"], "")
             final_test_key = st.session_state.get(WIDGET_KEYS["test_key"], "")
             
-            if not final_judge_key:
-                st.error("❌ Judge API key is required!")
-                return None
-            
-            if not final_test_key:
-                st.error("❌ Test Model API key is required!")
-                return None
+            # Re-adding validation as requested
             
             # Get widget values from session state
             selected_judge_provider = st.session_state.get(WIDGET_KEYS["judge_provider"], "gemini")
@@ -571,20 +582,39 @@ def render_setup_page():
             selected_judge_name = st.session_state.get(WIDGET_KEYS["judge_custom_name"], "Judge LLM")
             selected_test_name = st.session_state.get(WIDGET_KEYS["test_custom_name"], "Test LLM")
             
-            # Get backup keys if provided
-            backup_judge_key = st.session_state.get("backup_judge_key", "")
-            backup_test_key = st.session_state.get("backup_test_key", "")
-            
             with st.spinner("🔗 Connecting to models..."):
                 try:
                     # Build API key lists with fallback support
                     judge_keys = [final_judge_key]
-                    if backup_judge_key:
-                        judge_keys.append(backup_judge_key)
+                    for i in range(st.session_state.get("num_extra_judge_keys", 0)):
+                        k = st.session_state.get(f"extra_judge_key_{i}", "")
+                        judge_keys.append(k)
+                    judge_keys = [k for k in judge_keys if k.strip()]
+                    
+                    if not judge_keys:
+                        st.error("❌ Judge API key is required!")
+                        return None
                     
                     test_keys = [final_test_key]
-                    if backup_test_key:
-                        test_keys.append(backup_test_key)
+                    for i in range(st.session_state.get("num_extra_test_keys", 0)):
+                        k = st.session_state.get(f"extra_test_key_{i}", "")
+                        test_keys.append(k)
+                    test_keys = [k for k in test_keys if k.strip()]
+                    
+                    if not test_keys:
+                        st.error("❌ Test Model API key is required!")
+                        return None
+                        
+                    # Remove duplicates while preserving order
+                    judge_keys = list(dict.fromkeys(judge_keys))
+                    test_keys = list(dict.fromkeys(test_keys))
+                    
+                    # Store keys in a separate dictionary for every provider
+                    if "provider_keys" not in st.session_state:
+                        st.session_state.provider_keys = {}
+                    
+                    st.session_state.provider_keys[selected_judge_provider] = judge_keys
+                    st.session_state.provider_keys[selected_test_provider] = test_keys
                     
                     # Create resilient clients with auto-recovery
                     st.session_state.judge_client = AutoRecoveryModelClient(
@@ -651,7 +681,7 @@ def run_llm_judge_evaluation(prompts: list):
     status_container = st.empty()
     status_container.info("Initializing...")
     
-    judge = LLMJudge(st.session_state.judge_adapter)
+    judge = LLMJudge(st.session_state.judge_adapter, vector_store=get_vector_store())
     all_results = []
     
     # Initialize cost tracker
@@ -659,17 +689,17 @@ def run_llm_judge_evaluation(prompts: list):
     st.session_state.cost_tracker = cost_tracker
     
     for i, prompt_data in enumerate(prompts):
-        status_container.info(f"Evaluating prompt {i+1}/{len(prompts)}: {prompt_data['id']}")
+        status_container.info(f"Evaluating prompt {i+1}/{len(prompts)}: {prompt_data.get('id', f'prompt_{i}')}")
         
         try:
             # Get model response
             model_response = st.session_state.model_adapter.generate(
-                prompt_data["prompt"],
+                prompt_data.get("prompt", ""),
                 temperature=0.7
             )
             
             # Track tokens for test model
-            prompt_tokens = len(prompt_data["prompt"].split()) * 1.3  # Rough estimate
+            prompt_tokens = len(prompt_data.get("prompt", "").split()) * 1.3  # Rough estimate
             response_tokens = len(model_response.split()) * 1.3
             test_provider = st.session_state.get("test_provider", "openrouter")
             test_key = st.session_state.get("test_api_key", "")
@@ -677,14 +707,14 @@ def run_llm_judge_evaluation(prompts: list):
             
             # Judge evaluation
             evaluation = judge.evaluate(
-                prompt=prompt_data["prompt"],
+                prompt=prompt_data.get("prompt", ""),
                 model_response=model_response,
                 expected_behavior=prompt_data.get("expected_behavior", ""),
                 prompt_metadata=prompt_data
             )
             
             # Track tokens for judge
-            judge_prompt = f"Evaluate: {prompt_data['prompt'][:500]}..."
+            judge_prompt = f"Evaluate: {prompt_data.get('prompt', '')[:500]}..."
             judge_response = evaluation.get("explanation", "")[:500]
             judge_tokens = int((len(judge_prompt.split()) + len(judge_response.split())) * 1.3)
             judge_provider = st.session_state.get("judge_provider", "gemini")
@@ -693,33 +723,35 @@ def run_llm_judge_evaluation(prompts: list):
             
             # Store complete result
             result = {
-                "prompt_id": prompt_data["id"],
-                "pillar": prompt_data["pillar"],
-                "level": prompt_data["level"],
+                "prompt_id": prompt_data.get("id", f"prompt_{i}"),
+                "pillar": prompt_data.get("pillar", "General"),
+                "level": prompt_data.get("level", 1),
                 "category": prompt_data.get("category", ""),
-                "prompt": prompt_data["prompt"],
+                "prompt": prompt_data.get("prompt", "Unknown prompt"),
                 "expected_behavior": prompt_data.get("expected_behavior", ""),
                 "model_response": model_response,
-                "judge_score": evaluation["score"],
-                "judge_determination": evaluation["determination"],
-                "judge_reasoning": evaluation["explanation"],
+                "judge_score": evaluation.get("score", 5),
+                "judge_determination": evaluation.get("determination", "FAIL"),
+                "judge_reasoning": evaluation.get("explanation", "Evaluation missing reasoning."),
                 "eu_act_ref": prompt_data.get("eu_act_ref", "")
             }
             
             all_results.append(result)
             
-            # Create checkpoint every 10 prompts or at the end
-            if (i + 1) % 10 == 0 or i == len(prompts) - 1:
-                smart_resume = st.session_state.get("smart_resume", SmartResume())
-                checkpoint_config = {
-                    "test_provider": st.session_state.get("test_provider", "openrouter"),
-                    "test_model_name": st.session_state.get("test_model_name", ""),
-                    "judge_provider": st.session_state.get("judge_provider", "gemini"),
-                    "judge_model": st.session_state.get("judge_model_name", ""),
-                }
-                checkpoint_id = f"eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                smart_resume.create_checkpoint(checkpoint_id, i + 1, len(prompts), all_results.copy(), checkpoint_config)
-                status_container.info(f"💾 Checkpoint saved at {i+1}/{len(prompts)} prompts")
+            # Create checkpoint after EVERY prompt for strict state saving
+            smart_resume = st.session_state.get("smart_resume", SmartResume())
+            checkpoint_config = {
+                "test_provider": st.session_state.get("test_provider", "openrouter"),
+                "test_model_name": st.session_state.get("test_model_name", ""),
+                "judge_provider": st.session_state.get("judge_provider", "gemini"),
+                "judge_model": st.session_state.get("judge_model_name", ""),
+            }
+            # Use a consistent checkpoint ID for this run so we don't create thousands of files
+            if "current_checkpoint_id" not in st.session_state:
+                st.session_state.current_checkpoint_id = f"eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            smart_resume.create_checkpoint(st.session_state.current_checkpoint_id, i + 1, len(prompts), all_results.copy(), checkpoint_config)
+            status_container.info(f"💾 Checkpoint strictly saved at {i+1}/{len(prompts)} prompts. You can safely stop the app at any time.")
             
         except APIKeyExhaustedError as e:
             # API key exhausted - stop and ask for new key
@@ -772,7 +804,7 @@ def run_llm_judge_evaluation(prompts: list):
     st.session_state.judge_results = {
         "evaluations": all_results,
         "total": len(all_results),
-        "overall_score": judge.get_overall_score(),
+        "overall_score": judge.get_average_score(),
         "pass_rate": judge.get_pass_rate(),
         "pillar_scores": judge.get_pillar_scores(),
         "level_scores": calculate_level_scores(all_results)
@@ -910,6 +942,55 @@ def display_judge_results():
         with st.spinner("Generating comprehensive report..."):
             report = generate_llm_judge_detailed_report(evaluations, results)
             st.markdown(report)
+            
+    # Export Options
+    st.markdown("---")
+    st.markdown("## 📥 Export Engineering Artifacts")
+    
+    col_pdf, col_jsonl = st.columns(2)
+    
+    with col_pdf:
+        if st.button("📄 Generate PDF Report", use_container_width=True):
+            with st.spinner("Generating PDF Report..."):
+                try:
+                    from src.reporting.report_generator import ReportGenerator
+                    from datetime import datetime
+                    import os
+                    rg = ReportGenerator()
+                    
+                    report_data = {
+                        "model_name": st.session_state.test_model_name,
+                        "generated_at": datetime.now().isoformat(),
+                        "summary": {
+                            "total_prompts_evaluated": results.get("total_prompts", 0),
+                            "average_score": results.get("overall_score", 0.0),
+                            "pass_rate": results.get("pass_rate", 0.0),
+                        },
+                        "heatmap": {"pillars": [], "levels": []},
+                        "detailed_evaluations": [{"prompt": {"prompt": e["prompt"]}, "model_response": e["model_response"], "judge_result": {"score": e["judge_score"], "rationale": e["judge_reasoning"]}} for e in evaluations]
+                    }
+                    pdf_path = rg.generate_pdf_report(report_data)
+                    st.success("PDF Generated! Check the 'data/results' directory.")
+                except Exception as e:
+                    st.error(f"Error generating PDF: {e}")
+                    
+    with col_jsonl:
+        if st.button("🛠️ Generate Failure Fine-Tuning Dataset (.jsonl)", use_container_width=True):
+            with st.spinner("Extracting failures..."):
+                try:
+                    from src.reporting.dataset_exporter import DatasetExporter
+                    import os
+                    de = DatasetExporter()
+                    
+                    detailed_evals = [{"prompt": {"prompt": e["prompt"]}, "model_response": e["model_response"], "judge_result": {"score": e["judge_score"], "rationale": e["judge_reasoning"]}} for e in evaluations]
+                    
+                    jsonl_path = de.export_failures(st.session_state.test_model_name.replace("/", "_"), detailed_evals, threshold=10.0)
+                    if jsonl_path:
+                        st.success(f"Fine-Tuning Dataset Generated! Check the 'data/fine_tuning' directory.")
+                    else:
+                        st.success("No failures found! Perfect score!")
+                except Exception as e:
+                    st.error(f"Error generating fine-tuning dataset: {e}")
     
     # Continue to Human Audit
     st.markdown("---")
@@ -1222,13 +1303,7 @@ def render_human_audit_page():
     
     with col2:
         st.markdown("#### 🤖 Model Response")
-        st.text_area(
-            "Model Response",
-            audit_item["model_response"],
-            height=200,
-            key="model_resp_human",
-            label_visibility="collapsed"
-        )
+        st.info(audit_item["model_response"])
     
     # Show LLM Judge's evaluation
     st.markdown("#### ⚖️ LLM Judge Analysis")
@@ -1439,30 +1514,29 @@ def render_comparison_page():
             st.rerun()
         return
     
-    # Calculate Agreement Delta
-    delta_calc = AgreementDeltaCalculator()
-    judge_scores = [m["judge_score"] for m in matched]
-    human_scores = [m["human_score"] for m in matched]
-    delta = delta_calc.calculate(judge_scores, human_scores)
+    # Calculate Cohen's Kappa
+    delta = calculate_kappa_from_judge_and_human_records(evaluations, human_audits)
+    kappa_val = delta.get("value", 0.0)
+    
+    # Rating based on typical Kappa interpretation
+    if kappa_val > 0.8: rating = "Excellent"
+    elif kappa_val > 0.6: rating = "Substantial"
+    elif kappa_val > 0.4: rating = "Moderate"
+    elif kappa_val > 0.2: rating = "Fair"
+    else: rating = "Poor"
+    
+    delta["rating"] = rating
     
     # Overall Comparison
-    st.markdown("## 🎯 Agreement Delta Analysis")
+    st.markdown("## 🎯 Reliability Analysis")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     
     with col1:
-        st.metric("Agreement Delta", f"{delta['agreement_delta']:.3f}")
+        st.metric("Cohen's Kappa", f"{kappa_val:.3f}")
     
     with col2:
-        rating = delta["rating"]
         st.metric("Rating", rating)
-    
-    with col3:
-        st.metric("Mean Abs. Diff", f"{delta['mean_absolute_difference']:.2f}")
-    
-    with col4:
-        exact_rate = delta["exact_agreement_rate"] * 100
-        st.metric("Exact Agreement", f"{exact_rate:.1f}%")
     
     # Comparison Visualizations
     st.markdown("### 📈 Judge vs Human Score Comparison")
@@ -1521,11 +1595,25 @@ def render_comparison_page():
         if pillar_matched:
             j_scores = [m["judge_score"] for m in pillar_matched]
             h_scores = [m["human_score"] for m in pillar_matched]
-            p_delta = delta_calc.calculate(j_scores, h_scores)
+            
+            # Reconstruct evaluation and audit dicts for the pillar to pass to kappa
+            p_evals = [e for e in evaluations if e["pillar"] == pillar]
+            p_audits = [a for a in human_audits if a["prompt_id"] in [m["prompt_id"] for m in pillar_matched]]
+            
+            p_delta = calculate_kappa_from_judge_and_human_records(p_evals, p_audits)
+            
+            k_val = p_delta.get("value", 0.0)
+            if k_val > 0.8: p_rating = "Excellent"
+            elif k_val > 0.6: p_rating = "Substantial"
+            elif k_val > 0.4: p_rating = "Moderate"
+            elif k_val > 0.2: p_rating = "Fair"
+            else: p_rating = "Poor"
+            p_delta["rating"] = p_rating
+            
             pillar_comparison[pillar] = {
                 "delta": p_delta,
-                "judge_avg": sum(j_scores) / len(j_scores),
-                "human_avg": sum(h_scores) / len(h_scores),
+                "judge_avg": sum(j_scores) / len(j_scores) if j_scores else 0,
+                "human_avg": sum(h_scores) / len(h_scores) if h_scores else 0,
                 "count": len(pillar_matched)
             }
     
@@ -1534,12 +1622,12 @@ def render_comparison_page():
     
     for i, (pillar, data) in enumerate(pillar_comparison.items()):
         with [col1, col2, col3][i]:
-            delta_val = data["delta"]["agreement_delta"]
+            delta_val = data["delta"].get("value", 0.0)
             st.markdown(f"""
             <div class="pillar-{pillar.lower()}">
                 <h4>{pillar}</h4>
                 <p>Judge Avg: {data['judge_avg']:.1f} | Human Avg: {data['human_avg']:.1f}</p>
-                <p><strong>Delta: {delta_val:.3f}</strong> ({data['delta']['rating']})</p>
+                <p><strong>Kappa: {delta_val:.3f}</strong> ({data['delta']['rating']})</p>
                 <p>Evaluated: {data['count']}</p>
             </div>
             """, unsafe_allow_html=True)
@@ -1651,6 +1739,55 @@ def render_comparison_page():
         use_container_width=True
     )
     
+    # Export Options
+    st.markdown("---")
+    st.markdown("## 📥 Export Engineering Artifacts")
+    
+    col_pdf, col_jsonl = st.columns(2)
+    
+    with col_pdf:
+        if st.button("📄 Generate PDF Report", use_container_width=True, key="comp_pdf"):
+            with st.spinner("Generating PDF Report..."):
+                try:
+                    from src.reporting.report_generator import ReportGenerator
+                    from datetime import datetime
+                    import os
+                    rg = ReportGenerator()
+                    
+                    report_data = {
+                        "model_name": st.session_state.test_model_name,
+                        "generated_at": datetime.now().isoformat(),
+                        "summary": {
+                            "total_prompts_evaluated": judge_results.get("total", 0),
+                            "average_score": judge_results.get("overall_score", 0.0),
+                            "pass_rate": judge_results.get("pass_rate", 0.0),
+                        },
+                        "heatmap": {"pillars": [], "levels": []},
+                        "detailed_evaluations": [{"prompt": {"prompt": e["prompt"]}, "model_response": e["model_response"], "judge_result": {"score": e["judge_score"], "rationale": e["judge_reasoning"]}} for e in evaluations]
+                    }
+                    pdf_path = rg.generate_pdf_report(report_data)
+                    st.success("PDF Generated! Check the 'data/results' directory.")
+                except Exception as e:
+                    st.error(f"Error generating PDF: {e}")
+                    
+    with col_jsonl:
+        if st.button("🛠️ Generate Failure Fine-Tuning Dataset (.jsonl)", use_container_width=True, key="comp_jsonl"):
+            with st.spinner("Extracting failures..."):
+                try:
+                    from src.reporting.dataset_exporter import DatasetExporter
+                    import os
+                    de = DatasetExporter()
+                    
+                    detailed_evals = [{"prompt": {"prompt": e["prompt"]}, "model_response": e["model_response"], "judge_result": {"score": e["judge_score"], "rationale": e["judge_reasoning"]}} for e in evaluations]
+                    
+                    jsonl_path = de.export_failures(st.session_state.test_model_name.replace("/", "_"), detailed_evals, threshold=10.0)
+                    if jsonl_path:
+                        st.success(f"Fine-Tuning Dataset Generated! Check the 'data/fine_tuning' directory.")
+                    else:
+                        st.success("No failures found! Perfect score!")
+                except Exception as e:
+                    st.error(f"Error generating fine-tuning dataset: {e}")
+
     # Generate Final Report
     st.markdown("---")
     st.markdown("## 📄 Generate Final Comprehensive Report")
@@ -1703,25 +1840,23 @@ def generate_final_comparison_report(
 | Average Score | {judge_results['overall_score']:.2f}/10 | {sum(m['human_score'] for m in matched)/len(matched) if matched else 0:.2f}/10 |
 | Pass Rate | {judge_results['pass_rate']*100:.1f}% | {sum(1 for m in matched if m['human_score'] >= 6)/len(matched)*100 if matched else 0:.1f}% |
 
-### 🎯 Agreement Analysis
+### 🎯 Reliability Analysis
 
 | Metric | Value |
 |--------|-------|
-| **Agreement Delta** | {delta['agreement_delta']:.3f} |
-| **Rating** | {delta['rating']} |
-| **Mean Absolute Difference** | {delta['mean_absolute_difference']:.2f} |
-| **Exact Agreement Rate** | {delta['exact_agreement_rate']*100:.1f}% |
+| **Cohen's Kappa** | {delta.get('value', 0):.3f} |
+| **Rating** | {delta.get('rating', 'N/A')} |
 
 ---
 
 ## 📋 Pillar-by-Pillar Comparison
 
-| Pillar | Judge Avg | Human Avg | Delta | Agreement |
+| Pillar | Judge Avg | Human Avg | Kappa | Agreement |
 |--------|-----------|-----------|-------|-----------|
 """
     
     for pillar, data in pillar_comparison.items():
-        report += f"| {pillar} | {data['judge_avg']:.2f} | {data['human_avg']:.2f} | {data['delta']['agreement_delta']:.3f} | {data['delta']['rating']} |\n"
+        report += f"| {pillar} | {data['judge_avg']:.2f} | {data['human_avg']:.2f} | {data['delta'].get('value', 0):.3f} | {data['delta'].get('rating', 'N/A')} |\n"
     
     report += f"""
 
@@ -1811,17 +1946,18 @@ Consistency       [Score]   [Score]   [Score]   [Score]   [Score]
 """
     
     # Analyze patterns
-    pillar_scores = judge_results["pillar_scores"]
-    weakest_pillar = min(pillar_scores.keys(), key=lambda p: pillar_scores[p])
-    
-    report += f"""
+    pillar_scores = judge_results.get("pillar_scores", {})
+    if pillar_scores:
+        weakest_pillar = min(pillar_scores.keys(), key=lambda p: pillar_scores[p])
+        
+        report += f"""
 1. **Prioritize {weakest_pillar} Training**
    - This pillar showed the lowest average score ({pillar_scores[weakest_pillar]:.1f}/10)
    - Focus on improving {weakest_pillar.lower()}-related reasoning capabilities.
 
 """
     
-    if delta["agreement_delta"] < 0.6:
+    if delta.get("value", 1.0) < 0.6:
         report += """
 2. **Review LLM-as-Judge Calibration**
    - The judge shows significant disagreement with human experts.
@@ -1846,7 +1982,7 @@ Consistency       [Score]   [Score]   [Score]   [Score]   [Score]
 
 - **Total Evaluations Conducted:** {len(evaluations)}
 - **Human Audits Completed:** {len(matched)}
-- **Agreement Rate:** {delta['exact_agreement_rate']*100:.1f}%
+- **Reliability (Kappa):** {delta.get('value', 0):.3f}
 - **Report Generated:** {datetime.now().isoformat()}
 
 ---
@@ -1941,7 +2077,7 @@ def render_history_page():
             model_stats[model_name]['evaluations'] += len(results)
     
     # Main tabs
-    tab1, tab2 = st.tabs(["📋 By Model", "🏆 Leaderboard"])
+    tab1, tab2, tab3 = st.tabs(["📋 By Model", "🏆 Leaderboard", "🔍 Semantic Search (RAG)"])
     
     with tab1:
         # Model selection
@@ -2122,6 +2258,69 @@ def render_history_page():
         
         st.download_button("📥 Export Leaderboard", export_md, 
                            file_name="model_leaderboard.md", mime="text/markdown")
+    
+    with tab3:
+        st.markdown("### 🔍 Semantic Search across Evaluations")
+        st.info("Query your entire testing history using natural language (e.g. 'show me times the model failed at security coding').")
+        
+        search_query = st.text_input("Enter your search query:")
+        n_results = st.slider("Number of results", min_value=1, max_value=20, value=5)
+        
+        if st.button("Search History", type="primary"):
+            if search_query:
+                with st.spinner("Searching Vector Database..."):
+                    try:
+                        from src.rag.pipeline import RAGPipeline
+                        rag = RAGPipeline()
+                        results = rag.query_evaluations(query_text=search_query, n_results=n_results)
+                        
+                        if results:
+                            # Save to session state so we can summarize it
+                            st.session_state.rag_results = results
+                            st.session_state.rag_query = search_query
+                            
+                            for idx, res in enumerate(results):
+                                meta = res.get("metadata", {})
+                                with st.expander(f"Result {idx+1}: {meta.get('model_name', 'Unknown')} (Score: {meta.get('score', 0)})"):
+                                    st.markdown(f"**Distance (lower is more relevant):** {res.get('distance', 0):.4f}")
+                                    st.markdown(f"**Session:** {meta.get('session_id')}")
+                                    st.markdown("#### Document Context:")
+                                    st.text(res.get("document", ""))
+                        else:
+                            st.warning("No results found or database is empty.")
+                    except Exception as e:
+                        st.error(f"Error querying database: {e}")
+            else:
+                st.warning("Please enter a query.")
+                
+        # LLM Synthesis Feature
+        if "rag_results" in st.session_state and st.session_state.rag_results:
+            st.markdown("---")
+            st.markdown("### 🧠 Generate AI Summary")
+            st.info("Have the AI Judge read the search results above and write a comprehensive summary report.")
+            if st.button("Synthesize Report from Results", type="primary"):
+                with st.spinner("Synthesizing Report..."):
+                    try:
+                        from src.models.adapters import AutoRecoveryModelClient
+                        judge = AutoRecoveryModelClient(
+                            st.session_state.judge_provider,
+                            st.session_state.judge_model_name,
+                            st.session_state.provider_keys.get(st.session_state.judge_provider, [])
+                        )
+                        
+                        context_docs = [res.get("document", "") for res in st.session_state.rag_results]
+                        system_prompt = "You are an expert AI Auditor. Read the provided historical evaluation documents and write a comprehensive, analytical markdown report answering the user's query."
+                        user_prompt = f"User Query: {st.session_state.rag_query}\n\nSearch Results Context:\n" + "\n\n---\n\n".join(context_docs)
+                        
+                        summary = judge.generate_response(system_prompt, user_prompt, max_tokens=1500)
+                        
+                        st.markdown("### 📄 RAG Synthesized Report")
+                        st.markdown(summary)
+                        
+                        st.download_button("📥 Download Summary Report", summary, file_name="rag_summary_report.md", mime="text/markdown")
+                        
+                    except Exception as e:
+                        st.error(f"Error generating AI summary: {e}")
     
     st.markdown("---")
     col1, col2 = st.columns(2)

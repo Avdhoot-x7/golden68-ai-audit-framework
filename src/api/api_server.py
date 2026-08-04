@@ -18,7 +18,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from src.models.adapters import ModelAdapterFactory
 from src.evaluation.loader import DatasetLoader
+from src.evaluation.scorer import Golden68Scorer
 from src.judges.llm_judge import LLMJudge
+from src.reporting.aggregation import summarize_evaluations
 
 
 class EvaluationAPI:
@@ -36,6 +38,7 @@ class EvaluationAPI:
         self.test_adapter = ModelAdapterFactory.create(provider, test_key, test_model)
         self.llm_judge = LLMJudge(self.judge_adapter)
         self.loader = DatasetLoader()
+        self.scorer = Golden68Scorer()
     
     def evaluate_prompt(self, prompt: str, expected_behavior: str = "") -> Dict[str, Any]:
         """Evaluate a single prompt."""
@@ -71,60 +74,27 @@ class EvaluationAPI:
                 **result["evaluation"]
             })
         
-        # Calculate summary
-        scores = [r.get("score", 0) for r in results]
-        passes = sum(1 for r in results if r.get("determination") == "PASS")
+        normalized_results = []
+        for result in results:
+            normalized_results.append({
+                "prompt_id": result.get("prompt_id"),
+                "pillar": result.get("pillar"),
+                "level": result.get("level"),
+                "judge_score": result.get("score", 0),
+                "judge_determination": result.get("determination", "FAIL"),
+                "judge_reasoning": result.get("explanation", ""),
+            })
+        summary = summarize_evaluations(normalized_results)
         
         return {
             "total": len(results),
             "completed": len(results),
-            "average_score": sum(scores) / len(scores) if scores else 0,
-            "pass_count": passes,
-            "pass_rate": passes / len(results) * 100 if results else 0,
+            "average_score": summary["average_score"],
+            "pass_rate": summary["pass_rate"],
+            "reliability": summary["reliability"],
             "results": results,
             "timestamp": datetime.now().isoformat()
         }
-    
-    def get_leaderboard(self) -> List[Dict[str, Any]]:
-        """Get leaderboard from all historical evaluations."""
-        results_dir = "data/results"
-        if not os.path.exists(results_dir):
-            return []
-        
-        model_scores = {}
-        
-        for filename in os.listdir(results_dir):
-            if not filename.endswith('.json'):
-                continue
-            
-            filepath = os.path.join(results_dir, filename)
-            with open(filepath, 'r') as f:
-                data = json.load(f)
-            
-            model = data.get('test_model', 'unknown')
-            results = data.get('results', [])
-            
-            if model not in model_scores:
-                model_scores[model] = []
-            model_scores[model].extend([r.get('judge_score', 0) for r in results])
-        
-        leaderboard = []
-        for model, scores in model_scores.items():
-            passes = sum(1 for s in scores if s >= 7)
-            avg = sum(scores) / len(scores) if scores else 0
-            leaderboard.append({
-                "model": model,
-                "average_score": round(avg, 2),
-                "pass_rate": round(passes / len(scores) * 100, 1) if scores else 0,
-                "total_evaluations": len(scores)
-            })
-        
-        leaderboard.sort(key=lambda x: x["average_score"], reverse=True)
-        
-        for i, entry in enumerate(leaderboard):
-            entry["rank"] = i + 1
-        
-        return leaderboard
 
 
 class APIHandler(BaseHTTPRequestHandler):
@@ -141,16 +111,9 @@ class APIHandler(BaseHTTPRequestHandler):
         if path == "/health":
             self._send_json({"status": "healthy", "timestamp": datetime.now().isoformat()})
         
-        elif path == "/leaderboard":
-            if self.api:
-                leaderboard = self.api.get_leaderboard()
-                self._send_json({"leaderboard": leaderboard})
-            else:
-                self._send_json({"error": "API not initialized"}, status=500)
-        
         elif path == "/evaluate":
             if self.api:
-                limit = int(query.get("limit", [66])[0])
+                limit = int(query.get("limit", [68])[0])
                 results = self.api.evaluate_dataset(limit=limit)
                 self._send_json(results)
             else:
@@ -167,7 +130,7 @@ class APIHandler(BaseHTTPRequestHandler):
             self._send_json({
                 "name": "Golden 68 API",
                 "version": "1.0",
-                "endpoints": ["/health", "/leaderboard", "/evaluate", "/evaluate?limit=10", "/prompts"]
+                "endpoints": ["/health", "/evaluate", "/evaluate?limit=10", "/prompts"]
             })
     
     def do_POST(self):
@@ -223,7 +186,6 @@ def run_server(host: str = "0.0.0.0", port: int = 8080,
     server = HTTPServer((host, port), APIHandler)
     print(f"🎯 Golden 68 API Server running at http://{host}:{port}")
     print(f"   - GET  /health         - Health check")
-    print(f"   - GET  /leaderboard    - Model rankings")
     print(f"   - GET  /evaluate      - Run full evaluation")
     print(f"   - POST /evaluate/single - Evaluate single prompt")
     print(f"\nPress Ctrl+C to stop")
