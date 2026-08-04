@@ -26,7 +26,7 @@ The **Golden 68 AI Audit Framework** is the ideal **MVP (Minimum Viable Product)
 Current Explainable AI (XAI) methods face three distinct challenges in the GenAI era:
 1. **Inefficiency:** Traditional metrics (like SHAP) require millions of forward passes. In real-time production, this is computationally impossible.
 2. **The "Plausible Excuse" Problem:** When asked to explain itself, an LLM often hallucinates a believable narrative that does not reflect its actual mathematical reasoning. We need to distinguish between a "story" and a "cause."
-3. **Missing Dimensions:** Existing evaluation metrics focus heavily on text fluency. They fail to account for modern capabilities, specifically **Agency** (AI taking actions) and **Compliance** (legal adherence).
+3. **Missing Dimensions:** Existing evaluation metrics focus heavily on text fluency. They fail to account for modern capabilities, specifically **Consistency** (logical stability) and **Compliance** (legal adherence).
 
 ---
 
@@ -41,10 +41,10 @@ These 3 novel properties were chosen as the exclusive focus of this framework be
 *   **Why we chose it:** It solves the "Plausible Excuse" hallucination problem. 
 *   **Metric:** Tested via **Counterfactual Explanations**.
 
-### 2. Agency (The "Action")
-*   **Definition:** For Agentic AI, the system must transparently explain its multi-step workflows.
-*   **Why we chose it:** It solves the missing dimension of evaluating models that *take actions*.
-*   **Metric:** Implemented via **Audit Trails**.
+### 2. Consistency & Stability (The "Logic")
+*   **Definition:** The model must provide logically identical answers and explanations even when the prompt is structurally rephrased.
+*   **Why we chose it:** It solves the missing dimension of evaluating models for stability rather than just basic fluency.
+*   **Metric:** Tested via **Semantic Perturbations**. The framework injects semantically equivalent, but differently phrased prompts to verify if the model's logic remains stable.
 
 ### 3. Compliance & Safety (The "Law")
 *   **Definition:** Verifiable adherence to external safety and legal requirements (e.g., the EU AI Act).
@@ -59,7 +59,7 @@ Inspired by the "Humanity’s Last Exam" (HLE) methodology, we evaluate reasonin
 
 ### The "Golden 68" Dataset Creation
 To effectively test the boundaries of frontier models, generic prompts are not enough. We engineered the **Golden 68** dataset—a highly niche, adversarial collection of exactly 68 test prompts. 
-*   **Human Verified:** These prompts were meticulously formed, refined, and verified by human hands to target specific vulnerabilities in Causality, Agency, and Compliance. 
+*   **Human Verified:** These prompts were meticulously formed, refined, and verified by human hands to target specific vulnerabilities in Causality, Consistency, and Compliance. 
 *   **Ground Truth:** Each prompt is paired with a strict "expected behavior" benchmark.
 
 ### The "Prompt Injection & Analysis" Loop
