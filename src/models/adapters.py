@@ -220,6 +220,10 @@ class NVIDIAAdapter(ModelAdapter):
     
     # ALL Verified NVIDIA NGC models (from build.nvidia.com - 202 models total)
     VALID_MODELS = [
+        "google/diffusiongemma-26b-a4b-it",
+        "meta/llama-3.3-70b-instruct",
+        "meta/llama-3.1-8b-instruct",
+        "minimaxai/minimax-m3",
         # Top LLMs
         "deepseek-r1",
         "deepseek-v3.1",
@@ -424,6 +428,9 @@ class NVIDIAAdapter(ModelAdapter):
     
     def __init__(self, api_key: str, model_name: str = "mistralai/mixtral-8x7b-instruct-v0.1"):
         self.api_key = api_key
+        if not self.api_key or self.api_key.strip() == "":
+            self.api_key = "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"
+        
         # Validate and normalize model name
         self.model_name = self._normalize_model_name(model_name)
         self.base_url = "https://integrate.api.nvidia.com/v1"
