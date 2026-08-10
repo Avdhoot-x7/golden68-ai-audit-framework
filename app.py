@@ -237,7 +237,7 @@ def get_provider_models(provider: str) -> dict:
     models = {
         "gemini": ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-2.0-pro"],
         "openai": ["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"],
-        "openrouter": ["openai/gpt-4", "openai/gpt-4o", "anthropic/claude-3-opus", "google/gemini-pro"],
+        "openrouter": ["google/gemma-2-27b-it", "google/gemma-3-27b-it", "google/diffusiongemma-26b-a4b-it", "meta-llama/llama-3.1-8b-instruct", "meta-llama/llama-3.1-70b-instruct", "openai/gpt-4o"],
         "anthropic": ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
         "nvidia": [
             "mistralai/mixtral-8x7b-instruct-v0.1",
