@@ -149,6 +149,9 @@ def save_session_history():
         os.makedirs(os.path.dirname(SESSION_FILE), exist_ok=True)
         serializable = {}
         for k, v in st.session_state.items():
+            # Exclude button states which Streamlit forbids setting programmatically
+            if k.endswith("_btn") or k.startswith("FormSubmitter") or "button" in k.lower():
+                continue
             # Exclude large nested structures or unsupported types, only save primitives
             if isinstance(v, (str, int, float, bool)) or (isinstance(v, list) and not v):
                 serializable[k] = v
