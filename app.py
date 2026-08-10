@@ -19,6 +19,18 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+def custom_metric(label, value, delta=None):
+    delta_html = f"<div style='font-size: 0.9rem; margin-top: 5px; opacity: 0.9;'>{delta}</div>" if delta else ""
+    html = f"""
+    <div class="metric-card" style="margin-bottom: 1rem;">
+        <div style="font-size: 1rem; opacity: 0.9;">{label}</div>
+        <div style="font-size: 1.8rem; font-weight: bold; margin-top: 5px;">{value}</div>
+        {delta_html}
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
@@ -555,16 +567,16 @@ def render_setup_page():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Judge Model", display_judge_name, delta=f"{display_judge_provider.title()} - {display_judge_model}")
+        custom_metric("Judge Model", display_judge_name, delta=f"{display_judge_provider.title()} - {display_judge_model}")
     
     with col2:
-        st.metric("Test Model", display_test_name, delta=f"{display_test_provider.title()} - {display_test_model}")
+        custom_metric("Test Model", display_test_name, delta=f"{display_test_provider.title()} - {display_test_model}")
     
     with col3:
-        st.metric("Pillars Selected", len(selected_pillars))
+        custom_metric("Pillars Selected", len(selected_pillars))
     
     with col4:
-        st.metric("Prompts Ready", len(prompts))
+        custom_metric("Prompts Ready", len(prompts))
     
     # Show prompt distribution
     st.markdown("### Prompt Distribution")
@@ -869,17 +881,17 @@ def display_judge_results():
     pass_rate = results["pass_rate"] * 100
     
     with col1:
-        st.metric("Total Prompts", results["total"])
+        custom_metric("Total Prompts", results["total"])
     
     with col2:
         grade = "A+" if score >= 9 else "A" if score >= 8 else "B" if score >= 7 else "C" if score >= 6 else "D" if score >= 5 else "F"
-        st.metric("Overall Score", f"{score:.2f}/10", delta=f"{score - 5:.2f}")
+        custom_metric("Overall Score", f"{score:.2f}/10", delta=f"{score - 5:.2f}")
     
     with col3:
-        st.metric("Pass Rate", f"{pass_rate:.1f}%")
+        custom_metric("Pass Rate", f"{pass_rate:.1f}%")
     
     with col4:
-        st.metric("Grade", grade)
+        custom_metric("Grade", grade)
     
     # Score Distribution Chart
     st.markdown("### 📈 Score Distribution")
@@ -931,7 +943,7 @@ def display_judge_results():
         
         with col:
             st.markdown(f'<div class="pillar-{pillar.lower()}">', unsafe_allow_html=True)
-            st.metric(f"{pillar}", f"{score:.1f}/10", f"{passes}/{len(pillar_evals)} passed")
+            custom_metric(f"{pillar}", f"{score:.1f}/10", f"{passes}/{len(pillar_evals)} passed")
             st.markdown('</div>', unsafe_allow_html=True)
     
     # Detailed Log with Expanders
@@ -1276,14 +1288,14 @@ def render_human_audit_page():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Total Evaluations", len(evaluations))
+        custom_metric("Total Evaluations", len(evaluations))
     
     with col2:
-        st.metric("Completed Audits", len(existing_audits))
+        custom_metric("Completed Audits", len(existing_audits))
     
     with col3:
         remaining = len(pending)
-        st.metric("Remaining", remaining, delta=f"{-remaining}" if remaining < len(evaluations) else None)
+        custom_metric("Remaining", remaining, delta=f"{-remaining}" if remaining < len(evaluations) else None)
     
     st.markdown("---")
     
@@ -1338,11 +1350,11 @@ def render_human_audit_page():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.metric("Judge Score", f"{audit_item['judge_score']}/10")
+        custom_metric("Judge Score", f"{audit_item['judge_score']}/10")
     
     with col2:
         det = audit_item["judge_determination"]
-        st.metric("Judge Determination", det)
+        custom_metric("Judge Determination", det)
     
     st.markdown("**Judge Reasoning:**")
     st.text(audit_item["judge_reasoning"])
@@ -1443,17 +1455,17 @@ def display_human_audit_summary():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total Audits", len(audits))
+        custom_metric("Total Audits", len(audits))
     
     with col2:
-        st.metric("Your Avg Score", f"{avg_human_score:.2f}/10")
+        custom_metric("Your Avg Score", f"{avg_human_score:.2f}/10")
     
     with col3:
         agree_rate = agree_count / len(audits) * 100
-        st.metric("Agreement Rate", f"{agree_rate:.1f}%")
+        custom_metric("Agreement Rate", f"{agree_rate:.1f}%")
     
     with col4:
-        st.metric("Disagreements", disagree_count)
+        custom_metric("Disagreements", disagree_count)
     
     # Distribution chart
     col1, col2 = st.columns(2)
@@ -1560,10 +1572,10 @@ def render_comparison_page():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.metric("Cohen's Kappa", f"{kappa_val:.3f}")
+        custom_metric("Cohen's Kappa", f"{kappa_val:.3f}")
     
     with col2:
-        st.metric("Rating", rating)
+        custom_metric("Rating", rating)
     
     # Comparison Visualizations
     st.markdown("### 📈 Judge vs Human Score Comparison")
@@ -2125,14 +2137,14 @@ def render_history_page():
             st.markdown("---")
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Evaluations", len(model_evaluations))
+                custom_metric("Evaluations", len(model_evaluations))
             with col2:
-                st.metric("Avg Score", f"{overall_avg:.2f}/10")
+                custom_metric("Avg Score", f"{overall_avg:.2f}/10")
             with col3:
-                st.metric("Pass Rate", f"{overall_pass_rate:.1f}%")
+                custom_metric("Pass Rate", f"{overall_pass_rate:.1f}%")
             with col4:
                 grade = "A+" if overall_avg >= 9 else "A" if overall_avg >= 8 else "B" if overall_avg >= 7 else "C" if overall_avg >= 6 else "D"
-                st.metric("Grade", grade)
+                custom_metric("Grade", grade)
             
             st.markdown("---")
             
@@ -2168,11 +2180,11 @@ def render_history_page():
                         pr = pstats['passes']/len(pstats['scores'])*100 if pstats['scores'] else 0
                         col1, col2, col3 = st.columns(3)
                         with col1:
-                            st.metric(f"🔗 {pillar}", f"{avg_p:.2f}/10")
+                            custom_metric(f"🔗 {pillar}", f"{avg_p:.2f}/10")
                         with col2:
-                            st.metric("Pass Rate", f"{pr:.1f}%")
+                            custom_metric("Pass Rate", f"{pr:.1f}%")
                         with col3:
-                            st.metric("Count", len(pstats['scores']))
+                            custom_metric("Count", len(pstats['scores']))
                 
                 with sub_tab2:
                     df_data = []
@@ -2260,13 +2272,13 @@ def render_history_page():
             with st.expander(f"{rank_emoji} {row['Model']} - Score: {row['Avg Score']}/10 (Grade: {grade})"):
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("Avg Score", f"{row['Avg Score']}/10")
+                    custom_metric("Avg Score", f"{row['Avg Score']}/10")
                 with col2:
-                    st.metric("Pass Rate", f"{row['Pass Rate']}%")
+                    custom_metric("Pass Rate", f"{row['Pass Rate']}%")
                 with col3:
-                    st.metric("Total Prompts", row['Total Prompts'])
+                    custom_metric("Total Prompts", row['Total Prompts'])
                 with col4:
-                    st.metric("Weighted Score", f"{row['Weighted Score']}")
+                    custom_metric("Weighted Score", f"{row['Weighted Score']}")
         
         # Leaderboard chart
         st.markdown("#### 📊 Comparison Chart")
@@ -2397,14 +2409,14 @@ def render_cost_monitor_page():
     total_tokens = sum(sum(u.get("tokens_used", 0) for u in v) for v in cost_tracker.usage_history.values())
     
     with col1:
-        st.metric("Active API Keys", total_keys)
+        custom_metric("Active API Keys", total_keys)
     with col2:
-        st.metric("Total Requests", total_requests)
+        custom_metric("Total Requests", total_requests)
     with col3:
-        st.metric("Total Tokens", f"{total_tokens:,}")
+        custom_metric("Total Tokens", f"{total_tokens:,}")
     with col4:
         estimated_cost = total_tokens * 0.00001  # Rough estimate
-        st.metric("Est. Cost", f"${estimated_cost:.4f}")
+        custom_metric("Est. Cost", f"${estimated_cost:.4f}")
     
     st.markdown("---")
     
