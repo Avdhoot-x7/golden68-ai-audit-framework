@@ -1168,7 +1168,7 @@ The following 5 prompts were handled excellently:
 | Metric | Value |
 |--------|-------|
 | Average Score | {pillar_score:.2f}/10 |
-| Pass Rate | {pillar_passes}/{len(pillar_evals)} ({pillar_passes/len(pillar_evals)*100:.1f}%) |
+| Pass Rate | {pillar_passes}/{len(pillar_evals)} ({(pillar_passes/len(pillar_evals)*100) if pillar_evals else 0:.1f}%) |
 
 **Key Issues Identified:**
 """

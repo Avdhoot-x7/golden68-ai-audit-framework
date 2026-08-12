@@ -171,10 +171,15 @@ class ReportGenerator:
         </html>
         """
         
-        with open(filepath, "w+b") as result_file:
-            pisa_status = pisa.CreatePDF(styled_html, dest=result_file)
-            
-        if pisa_status.err:
-            raise Exception("PDF generation failed.")
-            
-        return str(filepath)
+        try:
+            with open(filepath, "w+b") as result_file:
+                pisa_status = pisa.CreatePDF(styled_html, dest=result_file)
+                if pisa_status.err:
+                    raise Exception("PDF generation failed.")
+            return str(filepath)
+        except Exception as e:
+            # Fallback to HTML if Cairo is missing on Windows
+            html_path = str(filepath).replace(".pdf", ".html")
+            with open(html_path, "w", encoding="utf-8") as html_file:
+                html_file.write(styled_html)
+            return html_path
