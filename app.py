@@ -48,7 +48,7 @@ st.set_page_config(
     page_title="Golden 68 - AI Audit Framework",
     page_icon="🏆",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # Custom CSS
@@ -255,6 +255,49 @@ def get_provider_models(provider: str) -> dict:
     return {"models": models.get(provider, [])}
 
 
+def load_presentation_demo_data(target_step="evaluation"):
+    """Instantly load precomputed 68-prompt benchmark results for presentation."""
+    eval_path = os.path.join(os.path.dirname(__file__), "data", "results", "llm_judge_20260804_082329.json")
+    if os.path.exists(eval_path):
+        with open(eval_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        evaluations = data.get("evaluations", [])
+        total = len(evaluations)
+        
+        # Calculate pillar scores
+        p_scores = {}
+        p_counts = {}
+        for e in evaluations:
+            p = e.get("pillar", "unknown")
+            p_scores[p] = p_scores.get(p, 0) + e.get("judge_score", 0)
+            p_counts[p] = p_counts.get(p, 0) + 1
+        pillar_scores = {p: round(p_scores[p] / p_counts[p], 2) for p in p_scores}
+        
+        overall_score = sum(e.get("judge_score", 0) for e in evaluations) / total if total > 0 else 0
+        pass_rate = sum(1 for e in evaluations if e.get("judge_determination") == "PASS") / total if total > 0 else 0
+        
+        st.session_state.judge_results = {
+            "evaluations": evaluations,
+            "total": total,
+            "total_prompts": total,
+            "overall_score": overall_score,
+            "pass_rate": pass_rate,
+            "pillar_scores": pillar_scores,
+            "level_scores": calculate_level_scores(evaluations)
+        }
+        st.session_state.evaluation_logs = evaluations
+        st.session_state.test_model_name = "openai/gpt-oss-120b"
+        st.session_state.test_display_name = "GPT-OSS-120B (OpenAI Reasoner)"
+        st.session_state.judge_model_name = "gemini-2.5-flash"
+        st.session_state.judge_display_name = "Gemini 2.5 Flash Judge"
+        st.session_state.selected_prompts = evaluations
+        
+    if "audit_manager" not in st.session_state or st.session_state.audit_manager is None:
+        st.session_state.audit_manager = HumanAuditManager()
+        
+    st.session_state.current_step = target_step
+
+
 # ============================================
 # PAGE 1: CONFIGURATION
 # ============================================
@@ -263,11 +306,43 @@ def render_setup_page():
     st.markdown('<h1 class="main-header">🏆 Golden 68 - AI Compliance & Audit Framework</h1>', unsafe_allow_html=True)
     
     st.markdown("""
-    <div style="text-align: center; color: #666; margin-bottom: 2rem;">
+    <div style="text-align: center; color: #666; margin-bottom: 1.5rem;">
         <strong>Evaluating LLMs on Causality, Compliance, and Consistency</strong><br>
         <small>68 carefully crafted prompts • EU AI Act 2026 aligned • Human-Audit enabled</small>
     </div>
     """, unsafe_allow_html=True)
+    
+    # ⚡ PRESENTATION / DEMO MODE HERO CARD
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 1.4rem 1.8rem; border-radius: 1rem; color: white; margin-bottom: 1.2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <h3 style="color: white; margin: 0 0 0.4rem 0;">⚡ Presentation Demo Mode (Instant Showcase)</h3>
+                <p style="margin: 0; font-size: 0.95rem; opacity: 0.95; line-height: 1.4;">
+                    Presenting to examiners, evaluators, or students? Skip waiting for live API inference! 
+                    Load verified results for <strong>OpenAI GPT-OSS-120B</strong> across all <strong>68 benchmark vectors</strong> 
+                    (evaluated via <strong>Gemini 2.5 Flash</strong> with <strong>26 Human Expert Audits</strong>) in under 1 second.
+                </p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    pcol1, pcol2, pcol3 = st.columns([1.3, 1.3, 1])
+    with pcol1:
+        if st.button("🚀 Launch 68-Vector Results (Instant)", type="primary", use_container_width=True, key="hero_eval_btn"):
+            load_presentation_demo_data(target_step="evaluation")
+            st.rerun()
+    with pcol2:
+        if st.button("📊 Multi-Model Comparison & Kappa", use_container_width=True, key="hero_comp_btn"):
+            load_presentation_demo_data(target_step="comparison")
+            st.rerun()
+    with pcol3:
+        if st.button("👤 View Human Audits", use_container_width=True, key="hero_human_btn"):
+            load_presentation_demo_data(target_step="human_audit")
+            st.rerun()
+            
+    st.markdown("---")
     
     # Quick Actions Row
     col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
@@ -284,7 +359,7 @@ def render_setup_page():
             st.session_state.current_step = "cost_monitor"
             st.rerun()
     with col4:
-        st.button("🚀 New Evaluation", type="primary", disabled=True, help="Scroll down to start")
+        st.button("🚀 New Live Evaluation", type="secondary", disabled=True, help="Configure API keys below to run fresh evaluations")
     
     st.markdown("---")
     
@@ -1614,6 +1689,8 @@ def render_comparison_page():
     
     with col2:
         # Difference histogram
+        judge_scores = [m["judge_score"] for m in matched]
+        human_scores = [m["human_score"] for m in matched]
         differences = [h - j for j, h in zip(judge_scores, human_scores)]
         
         fig = px.histogram(
@@ -2561,10 +2638,69 @@ def render_cost_monitor_page():
             st.rerun()
 
 
+def render_sidebar():
+    """Render a persistent sidebar for fast navigation during presentations."""
+    with st.sidebar:
+        st.markdown("## 🏆 Golden 68")
+        st.markdown("**AI Compliance & Audit Framework**")
+        st.caption("EU AI Act 2026 Aligned Benchmark")
+        
+        st.markdown("---")
+        st.markdown("### ⚡ Presentation Mode")
+        st.info("Presenting to reviewers? Load the 68-vector benchmark instantly without API keys:")
+        
+        if st.button("🚀 Load 68-Vector Results", type="primary", use_container_width=True, key="side_load_demo"):
+            load_presentation_demo_data(target_step="evaluation")
+            st.rerun()
+            
+        if st.button("📊 View Model Comparison", use_container_width=True, key="side_load_comp"):
+            load_presentation_demo_data(target_step="comparison")
+            st.rerun()
+            
+        st.markdown("---")
+        st.markdown("### 🧭 Quick Navigation")
+        
+        step_labels = {
+            "setup": "⚙️ Setup & Config",
+            "evaluation": "🧪 LLM Judge Evaluation",
+            "human_audit": "👤 Human Expert Audit",
+            "comparison": "📊 Model Comparison & Kappa",
+            "history": "📜 Historical Audits",
+            "cost_monitor": "💰 Token & Cost Monitor"
+        }
+        
+        current = st.session_state.get("current_step", "setup")
+        
+        for step_key, label in step_labels.items():
+            is_active = (current == step_key)
+            btn_type = "primary" if is_active else "secondary"
+            if st.button(label, key=f"nav_{step_key}", use_container_width=True, type=btn_type):
+                if step_key in ["evaluation", "comparison", "human_audit"] and st.session_state.get("judge_results") is None:
+                    load_presentation_demo_data(target_step=step_key)
+                else:
+                    st.session_state.current_step = step_key
+                st.rerun()
+                
+        st.markdown("---")
+        st.markdown("### 📋 Benchmark Snapshot")
+        st.markdown("""
+        - **Model:** `openai/gpt-oss-120b`
+        - **Judge:** `gemini-2.5-flash`
+        - **Total Vectors:** 68 Prompts
+        - **Causality:** 7.35 / 10
+        - **Consistency:** 8.91 / 10
+        - **Compliance:** 6.27 / 10
+        - **Overall Score:** 7.53 / 10
+        - **Agreement Rate:** 100.0%
+        - **Cohen's Kappa:** κ = 0.778
+        """)
+
+
 # ============================================
 def main():
     """Main application entry point."""
     init_session_state()
+    render_sidebar()
     
     # Step-based navigation
     if st.session_state.current_step == "setup":

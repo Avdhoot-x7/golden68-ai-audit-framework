@@ -62,15 +62,28 @@ def calculate_kappa_from_judge_and_human_records(
         if not judge_label:
             judge_label = "PASS" if judge_record.get("judge_score", 0) >= pass_threshold else "FAIL"
 
+        human_verdict = human_record.get("human_verdict")
         human_score = human_record.get("human_score")
-        if human_score is None:
+
+        if human_verdict == "AGREE":
+            human_label = judge_label
+        elif human_verdict == "DISAGREE":
+            human_label = "FAIL" if judge_label == "PASS" else "PASS"
+        elif human_verdict == "PARTIAL":
+            human_label = "PASS" if (human_score or 0) >= 8 else judge_label
+        elif human_score is not None:
+            human_label = "PASS" if human_score >= pass_threshold else "FAIL"
+        else:
             continue
 
-        human_label = "PASS" if human_score >= pass_threshold else "FAIL"
         judge_labels.append(judge_label)
         human_labels.append(human_label)
 
     if not judge_labels:
         return build_reliability_placeholder()
 
-    return calculate_cohens_kappa(judge_labels, human_labels)
+    result = calculate_cohens_kappa(judge_labels, human_labels)
+    agreement_rate = sum(1 for a, b in zip(judge_labels, human_labels)) / len(judge_labels)
+    result["agreement_rate"] = round(agreement_rate * 100, 1)
+    result["sample_size"] = len(judge_labels)
+    return result

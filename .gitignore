@@ -46,7 +46,6 @@ env/
 # Project Specific
 data/checkpoints/
 data/cost_tracking/
-data/audit/
 outputs/
 logs/
 *.log
@@ -66,8 +65,15 @@ data/chroma_db/
 data/embedding_model/
 data/fine_tuning/
 data/reports/
-data/results/
 data/dataset/L_*
 data/dataset/OJ_*
 trail test/
 *.bat
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+data/session_history.json

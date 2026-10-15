@@ -113,17 +113,35 @@ class HumanAuditManager:
         return filepath
     
     def load_audits(self, session_id: str = None) -> List[Dict[str, Any]]:
-        """Load audits from a session."""
-        if session_id is None:
-            session_id = datetime.now().strftime("%Y%m%d")
-        
-        filepath = os.path.join(self.audit_dir, f"audit_{session_id}.json")
-        
-        if os.path.exists(filepath):
-            with open(filepath, "r", encoding="utf-8") as f:
+        """Load audits from a session, falling back to the most recent audit file if needed."""
+        if session_id:
+            filepath = os.path.join(self.audit_dir, f"audit_{session_id}.json")
+            if os.path.exists(filepath):
+                with open(filepath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("audits", [])
+
+        # Try default today
+        today_id = datetime.now().strftime("%Y%m%d")
+        today_filepath = os.path.join(self.audit_dir, f"audit_{today_id}.json")
+        if os.path.exists(today_filepath):
+            with open(today_filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return data.get("audits", [])
-        
+
+        # Fallback to the latest available audit file in audit_dir
+        if os.path.exists(self.audit_dir):
+            audit_files = [
+                f for f in os.listdir(self.audit_dir)
+                if f.startswith("audit_") and f.endswith(".json") and not f.startswith("audit_report_")
+            ]
+            if audit_files:
+                audit_files.sort(reverse=True)
+                latest_path = os.path.join(self.audit_dir, audit_files[0])
+                with open(latest_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("audits", [])
+
         return []
     
     def get_pending_audits(
