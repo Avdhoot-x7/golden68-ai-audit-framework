@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden 68 | AI Compliance & Audit Framework</title>
+  <meta name="description" content="Explainable AI Audit Framework for Autonomous Large Language Models under EU AI Act 2026 Mandates.">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="bg-glow-top"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="container nav-wrapper">
+      <a href="#" class="brand">
+        <div class="brand-icon">G68</div>
+        <div class="brand-text">
+          <h1>Golden 68 Framework</h1>
+          <span>AI Compliance & Audit</span>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#metrics">Overview</a></li>
+        <li><a href="#analytics">Visualizations</a></li>
+        <li><a href="#explorer">68 Vectors</a></li>
+        <li><a href="#audits">Human Audits</a></li>
+        <li><a href="#paper" class="btn-nav">📄 Research Paper</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="container">
+    <section class="hero">
+      <div class="hero-badge-wrap">
+        <span class="badge badge-glow">🏆 IEEE Conference Paper Available</span>
+        <span class="badge badge-cyan">⚖️ EU AI Act 2026 Aligned</span>
+        <span class="badge">🎯 Cohen's Kappa κ = 0.778</span>
+        <span class="badge">⚡ Zero-Latency Showcase</span>
+      </div>
+      <h1 class="hero-title">Golden 68 AI Audit Framework</h1>
+      <p class="hero-subtitle">
+        An empirical benchmark and Explainable AI framework evaluating autonomous LLMs across 
+        <strong>Causality</strong>, <strong>Consistency</strong>, and <strong>Statutory Compliance</strong> 
+        with automated LLM-as-a-Judge and expert human verification.
+      </p>
+      <div class="hero-meta">
+        <strong>Department of Computer Science & Engineering (AIML)</strong><br>
+        K. E. Society's Rajarambapu Institute of Technology, Rajaramnagar | Guided by <strong>Dr. R. A. Medar</strong>
+      </div>
+      <div class="hero-cta">
+        <a href="#explorer" class="btn btn-primary">🔍 Explore 68 Test Vectors</a>
+        <a href="paper/ieee_main.pdf" target="_blank" class="btn btn-secondary">📄 Download IEEE Paper (PDF)</a>
+        <a href="https://github.com/Avdhoot-x7/golden68-ai-audit-framework" target="_blank" class="btn btn-secondary">⭐ GitHub Repository</a>
+      </div>
+    </section>
+
+    <!-- Key Metrics Grid -->
+    <section id="metrics" class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Target Model</div>
+        <div class="metric-value" style="font-size: 1.25rem; font-family: monospace;">GPT-OSS-120B</div>
+        <div class="metric-sub">OpenAI 120B Reasoner</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Judge Model</div>
+        <div class="metric-value highlight" style="font-size: 1.25rem; font-family: monospace;">Gemini 2.5 Flash</div>
+        <div class="metric-sub">ChromaDB Statutory RAG</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Total Vectors</div>
+        <div class="metric-value" id="metric-total">68</div>
+        <div class="metric-sub">3 Evaluation Pillars</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Overall Score</div>
+        <div class="metric-value highlight" id="metric-score">7.53 / 10</div>
+        <div class="metric-sub">Pillar Weighted Average</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Pass Rate</div>
+        <div class="metric-value pass" id="metric-pass-rate">61.8%</div>
+        <div class="metric-sub">42 Pass / 26 Deficit</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Human Audits</div>
+        <div class="metric-value" id="metric-audits">26</div>
+        <div class="metric-sub">Double-Blind Verification</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Cohen's Kappa</div>
+        <div class="metric-value pass" id="metric-kappa">κ = 0.778</div>
+        <div class="metric-sub">Substantial Agreement</div>
+      </div>
+    </section>
+
+    <!-- Visualizations & Analytics -->
+    <section id="analytics" class="section">
+      <div class="section-header">
+        <h2>📊 Framework Analytics & Evaluation Insights</h2>
+        <p>Interactive visualizations grounded in empirical Phase-II benchmark results.</p>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span>🔺 3-Pillar Capability Profile</span>
+            <span style="font-size: 0.75rem; color: #a5b4fc;">Radar Analysis</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-radar"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">
+            <span>📈 Score Distribution (0 - 10)</span>
+            <span style="font-size: 0.75rem; color: #10b981;">68 Vectors</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-dist"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">
+            <span>🎯 Pass / Fail Determination</span>
+            <span style="font-size: 0.75rem; color: #cbd5e1;">Threshold = 7.0</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-pass"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">
+            <span>👥 Judge vs Human Score Scatter</span>
+            <span style="font-size: 0.75rem; color: #06b6d4;">26 Verified Pairs</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-scatter"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Regulatory Readiness Heatmap -->
+      <div class="heatmap-card">
+        <div class="chart-title" style="margin-bottom: 20px;">
+          <span>🗺️ Regulatory Readiness Matrix (Pillar × Complexity Tier)</span>
+          <span style="font-size: 0.8rem; color: #9ca3af;">Average Score out of 10</span>
+        </div>
+        <table class="heatmap-table">
+          <thead>
+            <tr>
+              <th style="text-align: left; width: 180px;">Evaluation Pillar</th>
+              <th>Level 1<br><span style="font-size: 0.7rem; font-weight: normal; color: #6b7280;">Basic</span></th>
+              <th>Level 2<br><span style="font-size: 0.7rem; font-weight: normal; color: #6b7280;">Intermediate</span></th>
+              <th>Level 3<br><span style="font-size: 0.7rem; font-weight: normal; color: #6b7280;">Advanced</span></th>
+              <th>Level 4<br><span style="font-size: 0.7rem; font-weight: normal; color: #6b7280;">High Risk</span></th>
+              <th>Level 5<br><span style="font-size: 0.7rem; font-weight: normal; color: #6b7280;">Adversarial</span></th>
+            </tr>
+          </thead>
+          <tbody id="heatmap-body">
+            <!-- Dynamically populated via app.js -->
+          </tbody>
+        </table>
+        <div style="margin-top: 16px; font-size: 0.8rem; color: #9ca3af; display: flex; gap: 20px; justify-content: center;">
+          <span>🟢 <strong>Green (8.0 - 10.0):</strong> High Competence</span>
+          <span>🟡 <strong>Yellow (6.0 - 7.9):</strong> Moderate / Partial Compliance</span>
+          <span>🔴 <strong>Red (&lt; 6.0):</strong> Critical Regulatory Risk</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 68 Vectors Explorer -->
+    <section id="explorer" class="section">
+      <div class="section-header">
+        <h2>🔍 68-Vector Interactive Benchmark Explorer</h2>
+        <p>Inspect every prompt, raw target model response, expected behavior, and LLM Judge evaluation.</p>
+      </div>
+
+      <div class="explorer-controls">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" class="search-input" placeholder="Search by Prompt ID (e.g. CAU-001), keyword, or EU AI Act article...">
+        </div>
+
+        <div class="filters-row">
+          <div class="filter-group">
+            <span style="font-size: 0.85rem; color: #6b7280; align-self: center;">Pillar:</span>
+            <button class="filter-btn filter-pillar active" data-pillar="all">All (68)</button>
+            <button class="filter-btn filter-pillar" data-pillar="Causality">Causality (23)</button>
+            <button class="filter-btn filter-pillar" data-pillar="Consistency">Consistency (23)</button>
+            <button class="filter-btn filter-pillar" data-pillar="Compliance">Compliance (22)</button>
+          </div>
+
+          <div class="filter-group">
+            <span style="font-size: 0.85rem; color: #6b7280; align-self: center;">Status:</span>
+            <button class="filter-btn filter-status active" data-status="all">All</button>
+            <button class="filter-btn filter-status" data-status="PASS">PASS</button>
+            <button class="filter-btn filter-status" data-status="FAIL">FAIL</button>
+          </div>
+
+          <div class="filter-group">
+            <span style="font-size: 0.85rem; color: #6b7280; align-self: center;">Level:</span>
+            <button class="filter-btn filter-level active" data-level="all">All</button>
+            <button class="filter-btn filter-level" data-level="1">L1</button>
+            <button class="filter-btn filter-level" data-level="2">L2</button>
+            <button class="filter-btn filter-level" data-level="3">L3</button>
+            <button class="filter-btn filter-level" data-level="4">L4</button>
+            <button class="filter-btn filter-level" data-level="5">L5</button>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span id="results-count" class="results-count">Showing 68 of 68 vectors</span>
+            <button id="btn-toggle-all" class="filter-btn">Expand All</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="vector-cards-container" class="vector-list">
+        <!-- Dynamically rendered via app.js -->
+      </div>
+    </section>
+
+    <!-- Human Audits & Reliability -->
+    <section id="audits" class="section">
+      <div class="section-header">
+        <h2>👥 Human Expert Verification & Reliability</h2>
+        <p>26 blind audits performed by human domain experts to validate LLM-as-a-Judge fidelity (Cohen's Kappa κ = 0.778, Agreement Delta = ±5.3%).</p>
+      </div>
+
+      <div class="table-card">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Prompt ID</th>
+              <th>Pillar</th>
+              <th>Level</th>
+              <th>Judge Score</th>
+              <th>Human Score</th>
+              <th>Delta (H - J)</th>
+              <th>Verdict</th>
+              <th>Human Auditor Rationale</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body">
+            <!-- Dynamically populated via app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- IEEE Research Paper Section -->
+    <section id="paper" class="section">
+      <div class="section-header">
+        <h2>📄 Published Research Paper</h2>
+        <p>Complete IEEE conference manuscript generated directly from the 80-page Capstone project findings.</p>
+      </div>
+
+      <div class="paper-card">
+        <h3 style="font-size: 1.4rem; color: #fff; margin-bottom: 8px;">
+          Golden 68 AI Audit Framework: Explainable AI for Autonomous Systems
+        </h3>
+        <div class="paper-authors">
+          Avadhut Makarand Chakradeo, Mayuri Mohan Sutar, Onkar Machindra Markad, Raviraj Dattatray Waghmare, and Dr. R. A. Medar
+        </div>
+        <div class="paper-affil">
+          Department of Computer Science & Engineering (Artificial Intelligence & Machine Learning)<br>
+          K. E. Society's Rajarambapu Institute of Technology, Rajaramnagar, Maharashtra, India
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin-bottom: 24px;">
+          <strong>Abstract:</strong> As Large Language Models are integrated into safety-critical autonomous workflows, traditional 
+          benchmarks fail to quantify statutory liability, causal resilience, and behavioral invariance. We present the 
+          <strong>Golden 68 AI Audit Framework</strong>, an explainable auditing architecture combining 68 expert-curated adversarial vectors 
+          aligned with the EU AI Act 2026. Evaluating <code>openai/gpt-oss-120b</code> against <code>gemini-2.5-flash</code> with ChromaDB statutory RAG 
+          revealed an overall score of 7.53/10, with Compliance demonstrating the highest vulnerability (6.27/10) compared to Causality (7.35/10) 
+          and Consistency (8.91/10). Inter-rater agreement with human experts achieved Cohen's Kappa κ = 0.778.
+        </p>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <a href="paper/ieee_main.pdf" target="_blank" class="btn btn-primary">📥 Download Full Paper (7-Page PDF)</a>
+          <a href="paper/ieee_main.tex" target="_blank" class="btn btn-secondary">📜 View LaTeX Source (ieee_main.tex)</a>
+          <a href="paper/references.bib" target="_blank" class="btn btn-secondary">📚 BibTeX References (45+ Citations)</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Project Team -->
+    <section class="section">
+      <div class="section-header">
+        <h2>👥 Project Team & Institutional Affiliation</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+        <div class="metric-card" style="text-align: left;">
+          <div style="font-weight: 700; color: #fff; font-size: 1.05rem;">Avadhut Chakradeo</div>
+          <div style="color: #a5b4fc; font-size: 0.85rem;">Project Lead & Framework Engineer</div>
+          <div style="color: #6b7280; font-size: 0.75rem; margin-top: 4px;">Dept of CSE (AIML), RIT</div>
+        </div>
+        <div class="metric-card" style="text-align: left;">
+          <div style="font-weight: 700; color: #fff; font-size: 1.05rem;">Mayuri Sutar</div>
+          <div style="color: #a5b4fc; font-size: 0.85rem;">Evaluation & Compliance Analyst</div>
+          <div style="color: #6b7280; font-size: 0.75rem; margin-top: 4px;">Dept of CSE (AIML), RIT</div>
+        </div>
+        <div class="metric-card" style="text-align: left;">
+          <div style="font-weight: 700; color: #fff; font-size: 1.05rem;">Onkar Markad</div>
+          <div style="color: #a5b4fc; font-size: 0.85rem;">Audit & Reliability Engineer</div>
+          <div style="color: #6b7280; font-size: 0.75rem; margin-top: 4px;">Dept of CSE (AIML), RIT</div>
+        </div>
+        <div class="metric-card" style="text-align: left;">
+          <div style="font-weight: 700; color: #fff; font-size: 1.05rem;">Raviraj Waghmare</div>
+          <div style="color: #a5b4fc; font-size: 0.85rem;">Benchmark & Dataset Architect</div>
+          <div style="color: #6b7280; font-size: 0.75rem; margin-top: 4px;">Dept of CSE (AIML), RIT</div>
+        </div>
+        <div class="metric-card" style="text-align: left;">
+          <div style="font-weight: 700; color: #fff; font-size: 1.05rem;">Dr. R. A. Medar</div>
+          <div style="color: #34d399; font-size: 0.85rem;">Project Guide & Head of Department</div>
+          <div style="color: #6b7280; font-size: 0.75rem; margin-top: 4px;">Dept of CSE (AIML), RIT</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p style="margin-bottom: 8px;"><strong>Golden 68 AI Compliance & Audit Framework</strong> • B.Tech Capstone Project 2026</p>
+      <p style="margin-bottom: 12px;">Department of Computer Science & Engineering (Artificial Intelligence & Machine Learning)</p>
+      <p style="font-size: 0.8rem; color: #6b7280;">K. E. Society's Rajarambapu Institute of Technology, Rajaramnagar (RIT)</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
