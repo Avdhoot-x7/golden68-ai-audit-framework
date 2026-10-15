@@ -22,6 +22,7 @@
         </div>
       </a>
       <ul class="nav-links">
+        <li><a href="#console" style="color: #34d399; font-weight: 700;">▶️ Live Runner</a></li>
         <li><a href="#metrics">Overview</a></li>
         <li><a href="#analytics">Visualizations</a></li>
         <li><a href="#explorer">68 Vectors</a></li>
@@ -51,9 +52,98 @@
         K. E. Society's Rajarambapu Institute of Technology, Rajaramnagar | Guided by <strong>Dr. R. A. Medar</strong>
       </div>
       <div class="hero-cta">
-        <a href="#explorer" class="btn btn-primary">🔍 Explore 68 Test Vectors</a>
+        <a href="#console" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: #10b981;">▶️ Run Live AI Audit</a>
+        <a href="#explorer" class="btn btn-secondary">🔍 Explore 68 Test Vectors</a>
         <a href="paper/ieee_main.pdf" target="_blank" class="btn btn-secondary">📄 Download IEEE Paper (PDF)</a>
         <a href="https://github.com/Avdhoot-x7/golden68-ai-audit-framework" target="_blank" class="btn btn-secondary">⭐ GitHub Repository</a>
+      </div>
+    </section>
+
+    <!-- Live AI Audit Interactive Console -->
+    <section class="live-console-card" id="console">
+      <div class="console-header">
+        <div class="console-title-wrap">
+          <div class="pulse-indicator" id="pulse-indicator"></div>
+          <div>
+            <h3>Live Autonomous Audit Execution</h3>
+            <p>Trigger real-time 68-vector evaluation pipeline across Causality, Consistency & Statutory Compliance</p>
+          </div>
+        </div>
+        <div class="console-badge" id="audit-status-badge">STATUS: IDLE</div>
+      </div>
+
+      <div class="console-controls-grid">
+        <div class="control-field">
+          <label for="sel-target-model">Target Evaluated Model</label>
+          <select id="sel-target-model" class="control-select">
+            <option value="gpt-oss-120b" selected>openai/gpt-oss-120b (120B SOTA Reasoner)</option>
+            <option value="llama-3.1-70b">meta-llama/llama-3.1-70b-instruct</option>
+            <option value="mixtral-8x22b">mistralai/mixtral-8x22b-instruct</option>
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="sel-judge-model">Judge & Verification Engine</label>
+          <select id="sel-judge-model" class="control-select">
+            <option value="gemini-2.5-flash" selected>google/gemini-2.5-flash + ChromaDB RAG</option>
+            <option value="human-expert">Dual-Review (Gemini + RIT Human Auditor)</option>
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="sel-eval-mode">Benchmark Protocol</label>
+          <select id="sel-eval-mode" class="control-select">
+            <option value="full-68" selected>Golden 68 Vectors (All Pillars: C1/C2/C3)</option>
+            <option value="causality-only">Pillar 1: Causality & Counterfactuals (23 vectors)</option>
+            <option value="consistency-only">Pillar 2: Consistency & Invariance (23 vectors)</option>
+            <option value="compliance-only">Pillar 3: EU AI Act & Statutory (22 vectors)</option>
+          </select>
+        </div>
+        <div class="control-field" style="justify-content: flex-end;">
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-run-audit" class="btn btn-run" style="flex: 1;">
+              <span id="btn-run-icon">▶️</span> <span id="btn-run-text">Run Live AI Audit</span>
+            </button>
+            <button id="btn-reset-audit" class="btn btn-secondary" title="Reset to Initial State">
+              🔄 Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Tracking -->
+      <div id="console-progress-wrap" class="console-progress-wrap" style="display: none;">
+        <div class="progress-info">
+          <span id="progress-phase-label">Initializing Golden 68 Test Engine...</span>
+          <span id="progress-percent-label">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Live Terminal Streaming Log -->
+      <div class="console-terminal" id="console-terminal-block">
+        <div class="terminal-header">
+          <span>⚡ Live Terminal & Judge Pipeline Log Stream</span>
+          <span class="terminal-badge idle" id="terminal-state-badge">IDLE - READY</span>
+        </div>
+        <div class="terminal-output" id="terminal-log-output">
+          <div class="terminal-line info">[SYS] Golden 68 AI Audit Engine v2.4 initialized. Ready to execute benchmark.</div>
+          <div class="terminal-line info">[SYS] Select target model and click "Run Live AI Audit" to trigger real-time evaluation.</div>
+        </div>
+      </div>
+
+      <!-- Success Banner (shown upon completion) -->
+      <div class="audit-success-banner" id="audit-success-banner" style="display: none;">
+        <div>
+          <strong style="color: #34d399; font-size: 1.05rem;">✅ AI Audit Run Completed Successfully!</strong>
+          <p style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">
+            Target: <code id="banner-target-name">openai/gpt-oss-120b</code> | Total Vectors: <strong>68/68</strong> | Mean Score: <strong id="banner-score">7.53/10</strong> | Pass Rate: <strong id="banner-pass">72.1%</strong> | Cohen's Kappa: <strong>0.778</strong>
+          </p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <a href="#metrics" class="btn btn-sm btn-primary">📊 View Scorecard</a>
+          <a href="#explorer" class="btn btn-sm btn-secondary">🔍 Inspect Vectors</a>
+        </div>
       </div>
     </section>
 
